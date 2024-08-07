@@ -318,13 +318,31 @@ prepair_taxonomy_table <- function(input_file, output_file, OTU_abund_filter_fil
   # output_file = paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/Taxonomy.csv")
 
   Taxonomy <- read.csv(input_file)
+  # data is two columns (OTU and taxa).  Split into multiple taxonomy columns (taxonomy_1, etc)
   Taxonomy<-as.data.frame(cSplit(indt=Taxonomy,splitCols=2,sep=";"))
-  colnames(Taxonomy)=c("hit","kingdom","phylum","class","order","family","genus","species")
+  # rename taxonomy columns to correct ¿levels?
+  colnames(Taxonomy)=c("hit","Kingdom","Phylum","Class","Order","Family","Genus","Species")
   row.names(Taxonomy)=Taxonomy$hit
+
+  ##rel Current code does not generate output as expected.
+  ##rel added this to ensure match
+  Taxonomy[,'hit'] <- NULL  
   #filter to match OTU table
   OTU_abund_filter <- colnames(data.table::fread(OTU_abund_filter_file))
-  Taxonomy_filt=Taxonomy[OTU_abund_filter,]
-  write.csv(Taxonomy_filt,output_file)
+  Taxonomy_filt <- Taxonomy[OTU_abund_filter,]
+  Taxonomy_Sort <- Taxonomy_filt[ order(row.names(Taxonomy_filt)),]
+
+  ##rel Current code does not generate output as expected.
+  ##rel added this to ensure match by cleaning up entries
+  Taxonomy_Sort$Kingdom <- sub(".*__", "", Taxonomy_Sort$Kingdom)
+  Taxonomy_Sort$Phylum <- sub(".*__", "", Taxonomy_Sort$Phylum)
+  Taxonomy_Sort$Class <- sub(".*__", "", Taxonomy_Sort$Class)
+  Taxonomy_Sort$Order <- sub(".*__", "", Taxonomy_Sort$Order)
+  Taxonomy_Sort$Family <- sub(".*__", "", Taxonomy_Sort$Family)
+  Taxonomy_Sort$Genus <- sub(".*__", "", Taxonomy_Sort$Genus)
+  Taxonomy_Sort$Species <- sub(".*__", "", Taxonomy_Sort$Species)
+  Taxonomy_Sort[is.na(Taxonomy_Sort)] <- ""
+  write.csv(Taxonomy_Sort,output_file)
 }
 
 # ```
