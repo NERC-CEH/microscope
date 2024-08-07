@@ -309,13 +309,24 @@ get_abundance_stats <- function(input_file, output_file){
 
 # **r**
 # ```{r taxonomy,eval=FALSE}
-Taxonomy <- read.csv(params$Tax_file)
-Taxonomy<-as.data.frame(cSplit(indt=Taxonomy,splitCols=2,sep=";"))
-colnames(Taxonomy)=c("hit","kingdom","phylum","class","order","family","genus","species")
-row.names(Taxonomy)=Taxonomy$hit
-#filter to match OTU table
-Taxonomy_filt=Taxonomy[colnames(OTU_tab_sub_occ_dec),]
-write.csv(Taxonomy_filt,paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/Taxonomy.csv"))
+
+prepair_taxonomy_table <- function(input_file, output_file, OTU_abund_filter_file){
+  # # This requires a variable "OTU_tab_sub_occ_dec" created in another functions
+  # # and written to a file in clean_OTU_table, will call this:
+  # OTU_abund_filter_file = paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/OTU_abund.csv"
+  # input_file = params$Tax_file
+  # output_file = paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/Taxonomy.csv")
+
+  Taxonomy <- read.csv(input_file)
+  Taxonomy<-as.data.frame(cSplit(indt=Taxonomy,splitCols=2,sep=";"))
+  colnames(Taxonomy)=c("hit","kingdom","phylum","class","order","family","genus","species")
+  row.names(Taxonomy)=Taxonomy$hit
+  #filter to match OTU table
+  OTU_abund_filter <- colnames(data.table::fread(OTU_abund_filter_file))
+  Taxonomy_filt=Taxonomy[OTU_abund_filter,]
+  write.csv(Taxonomy_filt,output_file)
+}
+
 # ```
 
 
