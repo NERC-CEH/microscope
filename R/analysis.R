@@ -219,9 +219,9 @@ conn<- dbConnect(drv,
 clean_environmental_metadata <- function(input_file, output_file){
   # # Need to create dir first
   # dir.create(paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL"), showWarnings = FALSE,recursive=TRUE)
-  # input_file = params$Env_file
+  # input_file = params$Env_file # basic_preprocessed/Env.csv
   # output_file = paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/Env.csv"
-  #
+  # # output variables:  Env_for_SQL
 
   #read in Env
   Env=data.frame(fread(input_file),row.names=1,check.names=FALSE)
@@ -242,8 +242,10 @@ clean_environmental_metadata <- function(input_file, output_file){
 clean_OTU_table <- function(input_file, output_file, OTU_table_occupancy_filter=30){
   # # Need to create dir first
   # dir.create(paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL"), showWarnings = FALSE,recursive=TRUE)
-  # input_file = params$OTU_tab_file
+  # input_file = params$OTU_tab_file # basic_preprocessed/OTU_tab.csv
   # output_file = paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/OTU_abund.csv"
+  # # output variables:  OTU_tab_sub_occ_dec
+  
   #read in OTU_tab
   OTU_tab=data.frame(fread(input_file),row.names=1,check.names=FALSE)
   #remove samples from OTU tab with reads less than 5000
@@ -314,8 +316,9 @@ prepair_taxonomy_table <- function(input_file, output_file, OTU_abund_filter_fil
   # # This requires a variable "OTU_tab_sub_occ_dec" created in another functions
   # # and written to a file in clean_OTU_table, will call this:
   # OTU_abund_filter_file = paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/OTU_abund.csv"
-  # input_file = params$Tax_file
+  # input_file = params$Tax_file # basic_preprocessed/Taxonomy.csv
   # output_file = paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/Taxonomy.csv")
+  # # output variables:  Taxonomy_filt (Taxonomy_Sort is now written as extra steps were needed.)
 
   Taxonomy <- read.csv(input_file)
   # data is two columns (OTU and taxa).  Split into multiple taxonomy columns (taxonomy_1, etc)
