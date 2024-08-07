@@ -239,22 +239,24 @@ clean_environmental_metadata <- function(input_file, output_file){
 
 ## Step 1.2
 
-clean_OTU_table <- function(){
-#read in OTU_tab
-OTU_tab=data.frame(fread(params$OTU_tab_file),row.names=1,check.names=FALSE)
-#read in Env
-#remove samples from OTU tab with reads less than 5000
-OTU_tab_sub<-OTU_tab[rowSums(OTU_tab)>5000,]
-#Convert OTU_tab_sub to presence and absence in order to filter OTU_tab by OTU occupancy (i.e how many samples an OTU is present in)
-OTU_tab_sub_pa=(OTU_tab_sub !=0)*1
-#remove taxa that do not meet occupancy threshold set in params$OTU_tab_occ_filter
-OTU_tab_sub_occ<-OTU_tab_sub[,which(colSums(OTU_tab_sub_pa)>=params$OTU_tab_occ_filter)]
-#normalise OTU tab
-OTU_tab_sub_occ_dec=decostand(OTU_tab_sub_occ,method="total")
-#Write OTU_tab_sub to file
-#first make new subdir in our outdir(if doesnt already exist) tO specify these are the tables that will be stored in SQL 
-dir.create(paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL"), showWarnings = FALSE,recursive=TRUE)
-write.csv(OTU_tab_sub_occ_dec,paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/OTU_abund.csv"))
+clean_OTU_table <- function(input_file, output_file, OTU_table_occupancy_filter=30){
+  # # Need to create dir first
+  # dir.create(paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL"), showWarnings = FALSE,recursive=TRUE)
+  # input_file = params$OTU_tab_file
+  # output_file = paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/OTU_abund.csv"
+  #read in OTU_tab
+  OTU_tab=data.frame(fread(input_file),row.names=1,check.names=FALSE)
+  #remove samples from OTU tab with reads less than 5000
+  OTU_tab_sub<-OTU_tab[rowSums(OTU_tab)>5000,]
+  #Convert OTU_tab_sub to presence and absence in order to filter OTU_tab by OTU occupancy (i.e how many samples an OTU is present in)
+  OTU_tab_sub_pa=(OTU_tab_sub !=0)*1
+  #remove taxa that do not meet occupancy threshold set in OTU_table_occupancy_filter
+  OTU_tab_sub_occ<-OTU_tab_sub[,which(colSums(OTU_tab_sub_pa)>=OTU_table_occupancy_filter)]
+  #normalise OTU tab
+  OTU_tab_sub_occ_dec=vegan::decostand(OTU_tab_sub_occ,method="total")
+  #Write OTU_tab_sub to file
+  #first make new subdir in our outdir(if doesnt already exist) tO specify these are the tables that will be stored in SQL 
+  write.csv(OTU_tab_sub_occ_dec,out_file))
 }
 
 
