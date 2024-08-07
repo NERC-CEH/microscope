@@ -309,6 +309,8 @@ write.csv(Taxonomy_filt,paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL
 # ```{r setup database if no previous data added,eval=FALSE}
 #Bit belt and braces with r and sql mechanisms to stop any accidental env/ plotting tools data duplication
 #if Empty_database parameter set to TRUE
+
+setup_R_db <- function(){
 if(params$Empty_database==TRUE){
   #Create empty plotting_tools schema if doesnt already exist (this is just going to be used to store generic   plotting objects- currently just uk map outline)
   dbExecute(conn=conn,"CREATE SCHEMA IF NOT EXISTS plotting_tools;")
@@ -338,7 +340,7 @@ if(params$Empty_database==TRUE){
   #create abund_table_descriptions table for recording abundance table preprocessing used
   #make abundance_table_name primary key
   dbExecute(conn=conn,"CREATE TABLE IF NOT EXISTS abund_tables.abund_table_descriptions(abund_table_name character varying(40),sample_read_filt character varying(40),otu_occupancy_filt character varying(40),normalisation character varying(40),further_notes character varying(80), CONSTRAINT abund_table_descriptions_pkey PRIMARY KEY (abund_table_name));")
-  
+  }
 }
 
 # ```
@@ -354,9 +356,11 @@ if(params$Empty_database==TRUE){
 # ```{r Add to database,eval=FALSE}
 
 #modify schema_table_prefix if params$Use_occupancy_in_schema_table_names is TRUE
+modify_schema_table_prefix <- function(){
 if (params$Use_occupancy_in_schema_table_names==TRUE){
   Schema_table_prefix_modified=paste0(params$Schema_table_prefix,"_occ_",params$OTU_tab_occ_filter)
 }else{Schema_table_prefix_modified=params$Schema_table_prefix}
+}
 
 
 
@@ -370,7 +374,7 @@ if (params$Use_occupancy_in_schema_table_names==TRUE){
 #separating tables into two(column wise), can easily use a join to get full
 #abundance table per ASV when needed in app
 
-
+format_otu_for_sql <- function(){
 otu_tab_for_SQL_precursor=t(OTU_tab_sub_occ_dec)
 #split into two, also add row names to both (hit col) i.e asv names so that the tables can be joined 
 half_cols=round(ncol(otu_tab_for_SQL_precursor)/2)
@@ -410,7 +414,7 @@ dbExecute(conn=conn,statement=append_cmd)
 dbExecute(conn=conn,paste0('CREATE TABLE IF NOT EXISTS ',Schema_table_prefix_modified,'_otu_attributes.',Schema_table_prefix_modified,'_maps(hit character varying(30),map_object bytea, CONSTRAINT ',Schema_table_prefix_modified,'_maps_pkey PRIMARY KEY ("hit"));'))
 #will fill maps table in step 3 using save_otu_map function
 # ```
-
+}
 
 
 ## Step 3 Make map objects for DB
@@ -431,6 +435,7 @@ dbExecute(conn=conn,paste0('CREATE TABLE IF NOT EXISTS ',Schema_table_prefix_mod
 ## below could be separated out??
 ############
 
+map_prep <-function(){
 #first lets get env in the same order as otu table
 Env_sub=Env[row.names(OTU_tab_sub_occ_dec),]
 identical(row.names(Env_sub),row.names(OTU_tab_sub_occ_dec))
@@ -473,7 +478,7 @@ gridded(grd) <- TRUE
 plot(grd)
 plot(uk.poly,add=T,col="red")
 # ```
-
+}
 ### 3.2 Generate maps per OTU
 
 
@@ -513,6 +518,7 @@ plot(uk.poly,add=T,col="red")
 # **r**
 # ```{R maps function, eval=FALSE}
 
+map_function <- function(){}
 save_otu_map<-function(OTU_name,OTU_table,Env_table,Grid,UK_poly,UK_line,Conn,Schema_table_prefix,Output_dir,Make_png){
   otu_abund<-OTU_table[,OTU_name,drop=FALSE]
 #make dataframe with eastings and northings 
@@ -552,6 +558,7 @@ save_otu_map<-function(OTU_name,OTU_table,Env_table,Grid,UK_poly,UK_line,Conn,Sc
     dev.off()
   }
 }
+}
 
 
 
@@ -564,6 +571,7 @@ save_otu_map<-function(OTU_name,OTU_table,Env_table,Grid,UK_poly,UK_line,Conn,Sc
 
 # **r**
 # ```{R maps parallelise, eval=FALSE}
+maps_parallelise <- function(){
 #create outdir for map objects
 dir.create(paste0(Output_dir_with_occ,"/Supplementary/Map_objects"), showWarnings = FALSE,recursive=TRUE)
 #parallelise on 40 CPU
@@ -591,7 +599,7 @@ parSapply(cl,colnames(OTU_tab_sub_occ_dec), function(x) save_otu_map(OTU_name=x,
 stopCluster(cl)
 
 # ```
-
+}
 
 ## Step 3 Make Blast database
 
@@ -603,6 +611,7 @@ stopCluster(cl)
 # Doing this using biopython.
 
 
+make_blast_py <- function(){
 # **python**
 # ```{python filter fasta file, eval=FALSE}
 from Bio import SeqIO
@@ -618,20 +627,26 @@ if not os.path.exists(r.Output_dir_with_occ+"/Supplementary/Filtered_sequences")
 records=(record for record in SeqIO.parse(r.params["Fasta_file"],"fasta") if record.id in OTU_tab_dict.keys())
 SeqIO.write(records, r.Output_dir_with_occ+"/Supplementary/Filtered_sequences/filtered_sequences.fasta", "fasta")
 # ```
-
+}
 
 ###  3.4 Make blast database
 
 # Take filtered fasta and make blast database for back end of shiny app
 
+make_blast_bash <- function(){
 # **Bash:**
 # ```{bash BlastDB, eval=FALSE}
 #cmake makes dir and any parent dirs necessary
 cmake -E make_directory $Output_dir_with_occ/App/Blast_DB
 makeblastdb -in $Output_dir_with_occ/Supplementary/Filtered_sequences/filtered_sequences.fasta -dbtype nucl -out $Output_dir_with_occ/App/Blast_DB/Blast_DB
 # ```
+}
 
-# #### 4 Create app front-end from template
+
+
+
+create_app_python <-function(){
+#### 4 Create app front-end from template
 
 # Using python to edit r code - find python easiest option for file handling
 
@@ -677,3 +692,4 @@ with open(blank_template,'r') as blank_template_file:
 
 # ```
 # App should now be an executable 
+}
