@@ -273,20 +273,32 @@ clean_OTU_table <- function(input_file, output_file, OTU_table_occupancy_filter=
 
 # **r**
 # ```{r get individual OTU abundance and occupancy,eval=FALSE}
-#lets get OTUs total abundance across all remaining samples
-abundance_stats=data.frame(hit=colnames(OTU_tab_sub_occ_dec),abundance=colSums(OTU_tab_sub_occ_dec))
-#get OTU abundance rank no.. where there are ties both values get the same rank i.e if two values that would be ranked 6 and 7 are the same they will both be ranked 6
-#contextualise the number by referencing the total amount of OTU/ASVs
-abundance_stats$abundance_rank=paste(rank(-abundance_stats$abundance,ties.method="min"),ncol(OTU_tab_sub_occ_dec),sep="/")
-#get presence absence again for remaining taxa 
-OTU_tab_sub_occ_dec_pa=(OTU_tab_sub_occ_dec !=0)*1
-#get occupancy by summing cols using presence absense version of abundance table
-abundance_stats$occupancy=colSums(OTU_tab_sub_occ_dec_pa)
-#get occupancy as a percentage and add rank
-abundance_stats$occupancy_proportion=paste(round(abundance_stats$occupancy/nrow(OTU_tab_sub_occ_dec_pa)*100,2),"% (Rank: ",rank(-round(abundance_stats$occupancy/nrow(OTU_tab_sub_occ_dec_pa)*100,2),ties.method="min"),"/",ncol(OTU_tab_sub_occ_dec_pa),")",sep="")
-#remove unnecessary columns
-abundance_stats=abundance_stats[,-c(2,4)]
-write.csv(abundance_stats,paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/abundance_stats.csv"),row.names=FALSE)
+
+get_abundance_stats <- function(input_file, output_file){
+  # # This requires a variable "OTU_tab_sub_occ_dec" created in another functions
+  # # and written to a file in clean_OTU_table
+  # input_file = paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/OTU_abund.csv"
+  # output_file = paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/abundance_stats.csv")
+  # # output variables:  abundance_stats
+
+  # get the otu table
+  OTU_tab_sub_occ_dec = data.frame(fread(input_file),row.names=1,check.names=FALSE)
+
+  #lets get OTUs total abundance across all remaining samples
+  abundance_stats=data.frame(hit=colnames(OTU_tab_sub_occ_dec),abundance=colSums(OTU_tab_sub_occ_dec))
+  #get OTU abundance rank no.. where there are ties both values get the same rank i.e if two values that would be ranked 6 and 7 are the same they will both be ranked 6
+  #contextualise the number by referencing the total amount of OTU/ASVs
+  abundance_stats$abundance_rank=paste(rank(-abundance_stats$abundance,ties.method="min"),ncol(OTU_tab_sub_occ_dec),sep="/")
+  #get presence absence again for remaining taxa 
+  OTU_tab_sub_occ_dec_pa=(OTU_tab_sub_occ_dec !=0)*1
+  #get occupancy by summing cols using presence absense version of abundance table
+  abundance_stats$occupancy=colSums(OTU_tab_sub_occ_dec_pa)
+  #get occupancy as a percentage and add rank
+  abundance_stats$occupancy_proportion=paste(round(abundance_stats$occupancy/nrow(OTU_tab_sub_occ_dec_pa)*100,2),"% (Rank: ",rank(-round(abundance_stats$occupancy/nrow(OTU_tab_sub_occ_dec_pa)*100,2),ties.method="min"),"/",ncol(OTU_tab_sub_occ_dec_pa),")",sep="")
+  #remove unnecessary columns
+  abundance_stats=abundance_stats[,-c(2,4)]
+  write.csv(abundance_stats,output_file,row.names=FALSE)
+}
 # ```
 
 ## Step 1.4
