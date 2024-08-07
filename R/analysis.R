@@ -213,8 +213,10 @@ conn<- dbConnect(drv,
 
 # **r**
 # ```{R Process OTU table, eval=FALSE}
-#read in OTU_tab
-OTU_tab=data.frame(fread(params$OTU_tab_file),row.names=1,check.names=FALSE)
+
+## Step 1.1
+
+clean_environmental_metadata <- function(){
 #read in Env
 Env=data.frame(fread(params$Env_file),row.names=1,check.names=FALSE)
 #dont need eastings and northings saved in database as map objects made generated in advance
@@ -224,6 +226,18 @@ Env_for_SQL=Env_for_SQL[-which(is.na(Env_for_SQL$avc_code)),]
 #Rearrange slightly so suitable for inserting into SQL- e.g make sample a column(rather than rownames) and change "pH" colname to "ph" as standard postgres field names without double quotes have to be lower case
 #https://deeplearning.lipingyang.org/2017/01/07/postgresql-column-names-of-a-table-are-case-sensitive/
 Env_for_SQL=data.frame(sample=row.names(Env_for_SQL),Env_for_SQL[,1:2],ph=Env_for_SQL[,3])
+#Write Env to file
+#first make new subdir in our outdir(if doesnt already exist) tO specify these are the tables that will be stored in SQL 
+dir.create(paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL"), showWarnings = FALSE,recursive=TRUE)
+write.csv(Env_for_SQL,paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/Env.csv"))
+}
+
+## Step 1.2
+
+clean_OTU_table <- function(){
+#read in OTU_tab
+OTU_tab=data.frame(fread(params$OTU_tab_file),row.names=1,check.names=FALSE)
+#read in Env
 #remove samples from OTU tab with reads less than 5000
 OTU_tab_sub<-OTU_tab[rowSums(OTU_tab)>5000,]
 #Convert OTU_tab_sub to presence and absence in order to filter OTU_tab by OTU occupancy (i.e how many samples an OTU is present in)
@@ -232,11 +246,13 @@ OTU_tab_sub_pa=(OTU_tab_sub !=0)*1
 OTU_tab_sub_occ<-OTU_tab_sub[,which(colSums(OTU_tab_sub_pa)>=params$OTU_tab_occ_filter)]
 #normalise OTU tab
 OTU_tab_sub_occ_dec=decostand(OTU_tab_sub_occ,method="total")
-#Write OTU_tab_sub and Env to file
+#Write OTU_tab_sub to file
 #first make new subdir in our outdir(if doesnt already exist) tO specify these are the tables that will be stored in SQL 
 dir.create(paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL"), showWarnings = FALSE,recursive=TRUE)
 write.csv(OTU_tab_sub_occ_dec,paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/OTU_abund.csv"))
-write.csv(Env_for_SQL,paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/Env.csv"))
+}
+
+
 # ```
 
 ## Step 1.3
