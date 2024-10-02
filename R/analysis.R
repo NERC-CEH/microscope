@@ -242,9 +242,10 @@ conn<- dbConnect(drv,
 clean_environmental_metadata <- function(input_file, output_file){
                                         #read in Env
     Env=data.frame(fread(input_file),row.names=1,check.names=FALSE)
-                                        #dont need eastings and northings saved in database as map objects made generated in advance
+                                        # dont need eastings and northings saved in database
+                                        # as map objects made generated in advance
     Env_for_SQL=Env[,c("avc_code","avc","pH")]
-                                        #filter out Env rows without avc code 
+                                        # filter out Env rows without avc code 
     Env_for_SQL=Env_for_SQL[-which(is.na(Env_for_SQL$avc_code)),]
                                         # Rearrange slightly so suitable for inserting into
                                         # SQL- e.g make sample a column(rather than rownames)
