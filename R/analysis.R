@@ -308,7 +308,7 @@ clean_OTU_table <- function(input_file, output_file, OTU_table_occupancy_filter=
                                         #first make new subdir in our outdir(if doesnt already
                                         # exist) tO specify these are the tables that will be
                                         # stored in SQL 
-    write.csv(OTU_tab_sub_occ_dec,out_file))
+    write.csv(OTU_tab_sub_occ_dec,out_file)
 }
 
 ## Step 1.3
