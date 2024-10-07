@@ -518,45 +518,54 @@ if (params$Use_occupancy_in_schema_table_names==TRUE){
 #abundance table per ASV when needed in app
 
 format_otu_for_sql <- function(){
-otu_tab_for_SQL_precursor=t(OTU_tab_sub_occ_dec)
-#split into two, also add row names to both (hit col) i.e asv names so that the tables can be joined 
-half_cols=round(ncol(otu_tab_for_SQL_precursor)/2)
-otu_tab_for_SQL_1=data.frame(hit=row.names(otu_tab_for_SQL_precursor),otu_tab_for_SQL_precursor[,1:half_cols],check.names=FALSE)
-otu_tab_for_SQL_2=data.frame(hit=row.names(otu_tab_for_SQL_precursor),otu_tab_for_SQL_precursor[,(half_cols+1):ncol(otu_tab_for_SQL_precursor)],check.names=FALSE)
-#could have used sqlCreateTable command to create table but constructed own command using colnames of Otu_tab_for_SQL so I could specify data types 
-table_create_cmd=paste0('CREATE TABLE IF NOT EXISTS abund_tables.',Schema_table_prefix_modified,'_abund_1','(hit character varying(30), "', paste(colnames(otu_tab_for_SQL_1)[2:ncol(otu_tab_for_SQL_1)],collapse='" numeric, "'),'" numeric, CONSTRAINT ',Schema_table_prefix_modified,'_abund_1_pkey PRIMARY KEY("hit"))')
-dbExecute(conn=conn,statement=table_create_cmd)
-table_create_cmd=paste0('CREATE TABLE IF NOT EXISTS abund_tables.',Schema_table_prefix_modified,'_abund_2','(hit character varying(30), "', paste(colnames(otu_tab_for_SQL_2)[2:ncol(otu_tab_for_SQL_2)],collapse='" numeric, "'),'" numeric, CONSTRAINT ',Schema_table_prefix_modified,'_abund_2_pkey PRIMARY KEY("hit"))')
-dbExecute(conn=conn,statement=table_create_cmd)
-#add data to abundance tables
-append_cmd=sqlAppendTable(con=conn,table=Id(schema="abund_tables",table=paste0(Schema_table_prefix_modified,"_abund_1")), values =otu_tab_for_SQL_1, row.names = FALSE )
+    otu_tab_for_SQL_precursor=t(OTU_tab_sub_occ_dec)
+                                        #split into two, also add row names to both (hit col)
+                                        # i.e asv names so that the tables can be joined 
+    half_cols = round(ncol(otu_tab_for_SQL_precursor)/2)
+    otu_tab_for_SQL_1=data.frame(hit=row.names(otu_tab_for_SQL_precursor),otu_tab_for_SQL_precursor[,1:half_cols],check.names=FALSE)
+    otu_tab_for_SQL_2=data.frame(hit=row.names(otu_tab_for_SQL_precursor),otu_tab_for_SQL_precursor[,(half_cols+1):ncol(otu_tab_for_SQL_precursor)],check.names=FALSE)
+                                        #could have used sqlCreateTable command to create table
+                                        # but constructed own command using colnames of
+                                        # Otu_tab_for_SQL so I could specify data types 
+    table_create_cmd=paste0('CREATE TABLE IF NOT EXISTS abund_tables.',Schema_table_prefix_modified,'_abund_1','(hit character varying(30), "', paste(colnames(otu_tab_for_SQL_1)[2:ncol(otu_tab_for_SQL_1)],collapse='" numeric, "'),'" numeric, CONSTRAINT ',Schema_table_prefix_modified,'_abund_1_pkey PRIMARY KEY("hit"))')
+    dbExecute(conn=conn,statement=table_create_cmd)
+    table_create_cmd=paste0('CREATE TABLE IF NOT EXISTS abund_tables.',Schema_table_prefix_modified,'_abund_2','(hit character varying(30), "', paste(colnames(otu_tab_for_SQL_2)[2:ncol(otu_tab_for_SQL_2)],collapse='" numeric, "'),'" numeric, CONSTRAINT ',Schema_table_prefix_modified,'_abund_2_pkey PRIMARY KEY("hit"))')
+    dbExecute(conn=conn,statement=table_create_cmd)
+                                        #add data to abundance tables
+    append_cmd=sqlAppendTable(con=conn,table=Id(schema="abund_tables",table=paste0(Schema_table_prefix_modified,"_abund_1")), values =otu_tab_for_SQL_1, row.names = FALSE )
+    dbExecute(conn=conn,statement=append_cmd)
+    append_cmd=sqlAppendTable(con=conn,table=Id(schema="abund_tables",table=paste0(Schema_table_prefix_modified,"_abund_2")), values =otu_tab_for_SQL_2, row.names = FALSE )
+    dbExecute(conn=conn,statement=append_cmd)
+    
+                                        # want to record how table was normalised/processed in db
+                                        # will be useful if multiple otu abundance tables in the
+                                        # same db- add to abund_table_descriptions table
+    data_descriptions=data.frame(rbind(c(paste0(Schema_table_prefix_modified,"_abund_1"),">5000 retained",paste0(">=",params$OTU_tab_occ_filter," retained"),"decostand total",paste0("first half of ",Schema_table_prefix_modified,"_abund table samples")),c(paste0(Schema_table_prefix_modified,"_abund_2"),">5000 retained",paste0(">=",params$OTU_tab_occ_filter," retained"),"decostand total",paste0("second half of ",Schema_table_prefix_modified,"_abund table samples"))))
+    colnames(data_descriptions)=c("abund_table_name", "sample_read_filt","otu_occupancy_filt", "normalisation","further_notes")
+    append_cmd=sqlAppendTable(con=conn,table=Id(schema="abund_tables",table="abund_table_descriptions"), values =data_descriptions, row.names = FALSE )
+    dbExecute(conn=conn,statement=append_cmd)
+    
+                                        # Create otu_attributes schema(specific to this
+                                        # taxonomic dataset) if doesnt already exist 
+    dbExecute(conn=conn,paste0("CREATE SCHEMA IF NOT EXISTS ",Schema_table_prefix_modified,"_otu_attributes;"))
+                                        #create empty taxonomy table within otu_attributes
+                                        # schema ,field name 'order' is in double quotes
+                                        # as it is also a SQL command
+    dbExecute(conn=conn,paste0('CREATE TABLE IF NOT EXISTS ',Schema_table_prefix_modified,'_otu_attributes.',Schema_table_prefix_modified,'_taxonomy(hit character varying(30),kingdom character varying(250),phylum character varying(250),class character varying(250),"order" character varying(250),family character varying(250),genus character varying(250),species character varying(250), CONSTRAINT ',Schema_table_prefix_modified,'_taxonomy_pkey PRIMARY KEY ("hit"))'))
+                                        #add data from data frame to empty taxonomy table
+    append_cmd=sqlAppendTable(con=conn,table=Id(schema=paste0(Schema_table_prefix_modified,"_otu_attributes"),table=paste0(Schema_table_prefix_modified,"_taxonomy")), values =Taxonomy_filt, row.names = FALSE )
 dbExecute(conn=conn,statement=append_cmd)
-append_cmd=sqlAppendTable(con=conn,table=Id(schema="abund_tables",table=paste0(Schema_table_prefix_modified,"_abund_2")), values =otu_tab_for_SQL_2, row.names = FALSE )
-dbExecute(conn=conn,statement=append_cmd)
-
-#want to record how table was normalised/processed in db, will be useful if multiple otu abundance tables in the same db- add to abund_table_descriptions table
-data_descriptions=data.frame(rbind(c(paste0(Schema_table_prefix_modified,"_abund_1"),">5000 retained",paste0(">=",params$OTU_tab_occ_filter," retained"),"decostand total",paste0("first half of ",Schema_table_prefix_modified,"_abund table samples")),c(paste0(Schema_table_prefix_modified,"_abund_2"),">5000 retained",paste0(">=",params$OTU_tab_occ_filter," retained"),"decostand total",paste0("second half of ",Schema_table_prefix_modified,"_abund table samples"))))
-colnames(data_descriptions)=c("abund_table_name", "sample_read_filt","otu_occupancy_filt", "normalisation","further_notes")
-append_cmd=sqlAppendTable(con=conn,table=Id(schema="abund_tables",table="abund_table_descriptions"), values =data_descriptions, row.names = FALSE )
-dbExecute(conn=conn,statement=append_cmd)
-
-#Create otu_attributes schema(specific to this taxonomic dataset) if doesnt already exist 
-dbExecute(conn=conn,paste0("CREATE SCHEMA IF NOT EXISTS ",Schema_table_prefix_modified,"_otu_attributes;"))
-#create empty taxonomy table within otu_attributes schema ,field name 'order' is in double quotes as it is also a SQL command
-dbExecute(conn=conn,paste0('CREATE TABLE IF NOT EXISTS ',Schema_table_prefix_modified,'_otu_attributes.',Schema_table_prefix_modified,'_taxonomy(hit character varying(30),kingdom character varying(250),phylum character varying(250),class character varying(250),"order" character varying(250),family character varying(250),genus character varying(250),species character varying(250), CONSTRAINT ',Schema_table_prefix_modified,'_taxonomy_pkey PRIMARY KEY ("hit"))'))
-#add data from data frame to empty taxonomy table
-append_cmd=sqlAppendTable(con=conn,table=Id(schema=paste0(Schema_table_prefix_modified,"_otu_attributes"),table=paste0(Schema_table_prefix_modified,"_taxonomy")), values =Taxonomy_filt, row.names = FALSE )
-dbExecute(conn=conn,statement=append_cmd)
-#create empty abundance stats table within otu_attributes schema
-dbExecute(conn=conn,paste0('CREATE TABLE IF NOT EXISTS ',Schema_table_prefix_modified,'_otu_attributes.',Schema_table_prefix_modified,'_abundance_stats(hit character varying(30),abundance_rank character varying(30),occupancy_proportion character varying(30), CONSTRAINT ',Schema_table_prefix_modified,'_abundance_stats_pkey PRIMARY KEY ("hit"));'))
-#add data from data frame to empty abundance stats table  
-append_cmd=sqlAppendTable(con=conn,table=Id(schema=paste0(Schema_table_prefix_modified,"_otu_attributes"),table=paste0(Schema_table_prefix_modified,"_abundance_stats")), values = abundance_stats , row.names = FALSE )
-dbExecute(conn=conn,statement=append_cmd)
-
-#Create empty maps table within otu_attributes_schema
-dbExecute(conn=conn,paste0('CREATE TABLE IF NOT EXISTS ',Schema_table_prefix_modified,'_otu_attributes.',Schema_table_prefix_modified,'_maps(hit character varying(30),map_object bytea, CONSTRAINT ',Schema_table_prefix_modified,'_maps_pkey PRIMARY KEY ("hit"));'))
-#will fill maps table in step 3 using save_otu_map function
-# ```
+                                        #create empty abundance stats table within
+                                        # otu_attributes schema
+    dbExecute(conn=conn,paste0('CREATE TABLE IF NOT EXISTS ',Schema_table_prefix_modified,'_otu_attributes.',Schema_table_prefix_modified,'_abundance_stats(hit character varying(30),abundance_rank character varying(30),occupancy_proportion character varying(30), CONSTRAINT ',Schema_table_prefix_modified,'_abundance_stats_pkey PRIMARY KEY ("hit"));'))
+                                        #add data from data frame to empty abundance stats table  
+    append_cmd=sqlAppendTable(con=conn,table=Id(schema=paste0(Schema_table_prefix_modified,"_otu_attributes"),table=paste0(Schema_table_prefix_modified,"_abundance_stats")), values = abundance_stats , row.names = FALSE )
+    dbExecute(conn=conn,statement=append_cmd)
+    
+                                        #Create empty maps table within otu_attributes_schema
+    dbExecute(conn=conn,paste0('CREATE TABLE IF NOT EXISTS ',Schema_table_prefix_modified,'_otu_attributes.',Schema_table_prefix_modified,'_maps(hit character varying(30),map_object bytea, CONSTRAINT ',Schema_table_prefix_modified,'_maps_pkey PRIMARY KEY ("hit"));'))
+                                        #will fill maps table in step 3 using save_otu_map function
+                                        # ```
 }
 
 
