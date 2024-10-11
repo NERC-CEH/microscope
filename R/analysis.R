@@ -517,6 +517,35 @@ if (params$Use_occupancy_in_schema_table_names==TRUE){
 #separating tables into two(column wise), can easily use a join to get full
 #abundance table per ASV when needed in app
 
+
+format_otu_for_Rsqlite <- function(abundance_csv){
+    ## Lets try not splitting to begin with
+    ## Current SQL command is:
+    ## CREATE TABLE IF NOT EXISTS abund_tables.<prefix>_abund_2(hit character varying(30), "<column names each followed by '" numeric, "'>" numeric, CONSTRAINT '<prefix>_abund_2_pkey PRIMARY KEY("hit"))'
+    ## Lets get rid of the prefix and double tables to:
+    ## CREATE TABLE IF NOT EXISTS abund_tables(hit character varying(30), "<column names each followed by '" numeric, "'>" numeric, CONSTRAINT '<prefix>_abund_2_pkey PRIMARY KEY("hit"))'
+
+    ## Lets use sprintf to get better formatting of the string.
+    ## Fails with "CONSTRAINT", not sure on need, so removing.
+    
+    sql_command <- sprintf("create table if not exists abund_table (hit character varying(30), %s numeric, primary key ('hit'))",
+                                     paste(colnames(abundance_csv), collapse=' numeric, ')   #colnames
+                           )
+
+    ## Create table, abundance
+    abundance_db <- dbConnect(RSQLite::SQLite(), "abundance_db.sqlite")
+    DBI::dbExecute(conn = abundance_db, statement = sql_command)
+    ## Fill table
+    DBI::dbWriteTable(abundance_db, "abund_table", abundance, append = TRUE, row.names = FALSE)
+    ## Disconnect, best practise?
+    DBI::dbDisconnect(abundance_db)
+
+
+}
+
+
+
+
 format_otu_for_sql <- function(){
     otu_tab_for_SQL_precursor=t(OTU_tab_sub_occ_dec)
                                         #split into two, also add row names to both (hit col)
@@ -542,7 +571,9 @@ format_otu_for_sql <- function(){
                               Schema_table_prefix_modified,
                               '_abund_1_pkey PRIMARY KEY("hit"))'
                               )
-    
+    ## statement = <valid SQL>
+    ## CREATE TABLE IF NOT EXISTS abund_tables.<prefix>_abund_2(hit character varying(30), "<column names each followed by '" numeric, "'>" numeric, CONSTRAINT '<prefix>_abund_2_pkey PRIMARY KEY("hit"))'
+        
     dbExecute(conn=conn,statement=table_create_cmd)
     
     table_create_cmd = paste0('CREATE TABLE IF NOT EXISTS abund_tables.',
@@ -575,7 +606,10 @@ format_otu_for_sql <- function(){
                                 row.names=FALSE)
     
     dbExecute(conn=conn,statement=append_cmd)
-    
+
+##########
+## Data descriptions table, ignore adding for now, lets get it wokring. ##
+#########    
                                         # want to record how table was normalised/processed in db
                                         # will be useful if multiple otu abundance tables in the
                                         # same db- add to abund_table_descriptions table
@@ -612,6 +646,10 @@ format_otu_for_sql <- function(){
                                 )
     
     dbExecute(conn=conn,statement=append_cmd)
+    
+    ## ######
+    ## end table descriptors, start taxonoomy table
+    ## ######    
     
                                         # Create otu_attributes schema(specific to this
                                         # taxonomic dataset) if doesnt already exist 
@@ -650,6 +688,8 @@ format_otu_for_sql <- function(){
     dbExecute(conn=conn,statement=append_cmd)
                                         #create empty abundance stats table within
                                         # otu_attributes schema
+
+##### Create new table, OTU
     
     dbExecute(conn=conn,paste0('CREATE TABLE IF NOT EXISTS ',
                                Schema_table_prefix_modified,
