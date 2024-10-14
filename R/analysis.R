@@ -837,135 +837,137 @@ format_otu_for_sql <- function(){
 ############
 
 map_prep <-function(){
-#first lets get env in the same order as otu table
-Env_sub=Env[row.names(OTU_tab_sub_occ_dec),]
-identical(row.names(Env_sub),row.names(OTU_tab_sub_occ_dec))
-#read in some shapefiles (georeferenced maps of uk)
-# uk polygon
-uk.poly<-rgdal::readOGR(paste0(params$Map_objs_input_dir,"/ukcoast1.shp"))
-# outline of uk
-uk.line<-rgdal::readOGR(paste0(params$Map_objs_input_dir,"/ukcoast_line.shp"))
-#grid references of maps are in latitude longitude, but CS data coords are in eastings/northings
-#some conversion trickery is required
-#before trickery we can define some conversion parameters
-ukgrid = "+init=epsg:27700"
-latlong = "+init=epsg:4326"
-#tell r what the current projections are of the maps
-#set the CRS (coordinate reference system) field
-uk.poly@proj4string = CRS(latlong)
-#set the CRS field
-uk.line@proj4string = CRS(latlong)
-#transform
-#transform coordinates to eastings northings
-uk.poly = spTransform(uk.poly, CRS(ukgrid))
-#transform coordinates to eastings northings
-uk.line = spTransform(uk.line, CRS(ukgrid))
-
-#check
-plot(uk.poly)
-plot(uk.line,add=T,col="red")
-
-#make a grid spanning uk, with which to interpolate
-#not sure what this does really
-g<-fortify(uk.poly)
-coordinates(g) = ~long+lat
-x.range <- as.integer(range(g@coords[,1]))
-y.range <- as.integer(range(g@coords[,2]))
-#specify spatial data as being gridded
-grd <- expand.grid(x=seq(from=x.range[1], to=x.range[2], by=5000), y=seq(from=y.range[1], to=y.range[2], by=5000) )
-coordinates(grd) <- ~ x+y
-gridded(grd) <- TRUE
-#check
-plot(grd)
-plot(uk.poly,add=T,col="red")
-# ```
+                                        #first lets get env in the same order as otu table
+    Env_sub=Env[row.names(OTU_tab_sub_occ_dec),]
+    identical(row.names(Env_sub),row.names(OTU_tab_sub_occ_dec))
+                                        #read in some shapefiles (georeferenced maps of uk)
+                                        # uk polygon
+    uk.poly<-rgdal::readOGR(paste0(params$Map_objs_input_dir,"/ukcoast1.shp"))
+                                        # outline of uk
+    uk.line<-rgdal::readOGR(paste0(params$Map_objs_input_dir,"/ukcoast_line.shp"))
+                                        #grid references of maps are in latitude longitude, but CS data coords are in eastings/northings
+                                        #some conversion trickery is required
+                                        #before trickery we can define some conversion parameters
+    ukgrid = "+init=epsg:27700"
+    latlong = "+init=epsg:4326"
+                                        #tell r what the current projections are of the maps
+                                        #set the CRS (coordinate reference system) field
+    uk.poly@proj4string = CRS(latlong)
+                                        #set the CRS field
+    uk.line@proj4string = CRS(latlong)
+                                        #transform
+                                        #transform coordinates to eastings northings
+    uk.poly = spTransform(uk.poly, CRS(ukgrid))
+                                        #transform coordinates to eastings northings
+    uk.line = spTransform(uk.line, CRS(ukgrid))
+    
+                                        #check
+    plot(uk.poly)
+    plot(uk.line,add=T,col="red")
+    
+                                        #make a grid spanning uk, with which to interpolate
+                                        #not sure what this does really
+    g<-fortify(uk.poly)
+    coordinates(g) = ~long+lat
+    x.range <- as.integer(range(g@coords[,1]))
+    y.range <- as.integer(range(g@coords[,2]))
+                                        #specify spatial data as being gridded
+    grd <- expand.grid(x=seq(from=x.range[1], to=x.range[2], by=5000), y=seq(from=y.range[1], to=y.range[2], by=5000) )
+    coordinates(grd) <- ~ x+y
+    gridded(grd) <- TRUE
+                                        #check
+    plot(grd)
+    plot(uk.poly,add=T,col="red")
+                                        # ```
 }
+
+
 ### 3.2 Generate maps per OTU
 
 
-# **save_otu_map** function  creates map object representing an individual OTUs/ ASVs geographical distribution this is saved to both the specified outputdir and database. Pngs of plotted map objects can also be saved to outdir for reference.
+                                        # **save_otu_map** function  creates map object representing an individual OTUs/ ASVs geographical distribution this is saved to both the specified outputdir and database. Pngs of plotted map objects can also be saved to outdir for reference.
 
-# Arguments
+                                        # Arguments
 
-# * OTU_name- OTU/ASV name
+                                        # * OTU_name- OTU/ASV name
 
-# * OTU_table- colnames should be OTUs, rows should be samples, row/sample order should be consistent with Env_table
+                                        # * OTU_table- colnames should be OTUs, rows should be samples, row/sample order should be consistent with Env_table
 
-# * Env_table - table with environmental metadata including 'eastings' and 'northings',cols should be environmental variables, rows should be samples, row/sample order should be consistent with Env table
+                                        # * Env_table - table with environmental metadata including 'eastings' and 'northings',cols should be environmental variables, rows should be samples, row/sample order should be consistent with Env table
 
-# * Grid- Spatial pixels object for interpolation
+                                        # * Grid- Spatial pixels object for interpolation
 
-# * UK_poly- Spatial polygons dataframe
-# * UK_line- Spatial lines dataframe
-# * Eastings_col- Eastings column name within Env_table
-# * Northings_col- Northings column name within Env_table
-# * Conn- connection to postgres database
-# *Schema_table_prefix - prefix of otu_attributes schema and maps table
-# * Output_dir- Output directory for map objects
-# * Make_png- TRUE/FALSE if true png will be generated of map as well as map object
+                                        # * UK_poly- Spatial polygons dataframe
+                                        # * UK_line- Spatial lines dataframe
+                                        # * Eastings_col- Eastings column name within Env_table
+                                        # * Northings_col- Northings column name within Env_table
+                                        # * Conn- connection to postgres database
+                                        # *Schema_table_prefix - prefix of otu_attributes schema and maps table
+                                        # * Output_dir- Output directory for map objects
+                                        # * Make_png- TRUE/FALSE if true png will be generated of map as well as map object
 
-# Example arguments for function testing
-# OTU_name="ASV_1"
-# OTU_table=OTU_tab_sub_occ_dec
-# Env_table=Env_sub
-# Grid=grd
-# UK_poly=uk.poly
-# UK_line=uk.line
-# Conn=conn
-# Schema_table_prefix=Schema_table_prefix_modified
-# Output_dir=paste0(Output_dir_with_occ,"/Supplementary/Map_objects")
-# Make_png=TRUE
+                                        # Example arguments for function testing
+                                        # OTU_name="ASV_1"
+                                        # OTU_table=OTU_tab_sub_occ_dec
+                                        # Env_table=Env_sub
+                                        # Grid=grd
+                                        # UK_poly=uk.poly
+                                        # UK_line=uk.line
+                                        # Conn=conn
+                                        # Schema_table_prefix=Schema_table_prefix_modified
+                                        # Output_dir=paste0(Output_dir_with_occ,"/Supplementary/Map_objects")
+                                        # Make_png=TRUE
 
-# **r**
-# ```{R maps function, eval=FALSE}
+                                        # **r**
+                                        # ```{R maps function, eval=FALSE}
 
 map_function <- function(){}
 save_otu_map<-function(OTU_name,OTU_table,Env_table,Grid,UK_poly,UK_line,Conn,Schema_table_prefix,Output_dir,Make_png){
-  otu_abund<-OTU_table[,OTU_name,drop=FALSE]
-#make dataframe with eastings and northings 
-  dat<-cbind(Env_table[,c('eastings','northings')],otu_abund)
-  colnames(dat)[3]="OTU"
-  dat<-dat[complete.cases(dat), ]
-  attach(dat)
-#specify the coordinates for the file with otu
-  sp::coordinates(dat) = ~eastings+northings
-#interpolate
-  spc.idw<-gstat::krige(OTU~1,dat,Grid)
-  ukgrid = "+init=epsg:27700"
-  spc.idw@proj4string<-sp::CRS(ukgrid)
-#now need to only show interpolation within UK coastline
-  overlay.idw<-sp::over(spc.idw,UK_poly)
-  newmap=spc.idw[complete.cases(overlay.idw),]
-#set heat map scale, want this to be dependent on OTU abundance i.e we want to show abundance contrast relative to that OTU
-  minv=min(otu_abund)
-  maxv=max(otu_abund)
-  at=c(minv,signif(maxv/256,1),signif(maxv/128,1),signif(maxv/64,1),signif(maxv/32,1),signif(maxv/16,1),signif(maxv/8,),signif(maxv/4,2),signif(maxv/2,2),maxv)
-#save map object to outdir
-  mapandinfo<-c(newmap,at)
-  save(mapandinfo,file=paste(Output_dir,"/",OTU_name,".RData",sep=""))
-#Add object to database  
-#need to first get object into a form suitable for SQL
-#convert to stream of bytes
-  ser_mapandinfo=serialize(mapandinfo,connection=NULL,ascii=TRUE)
-#convert to a form postgres will accept
-  bytea_ser_mapandinfo<-RPostgreSQL::postgresqlEscapeBytea(ser_mapandinfo,con=Conn)
-  dbSendQuery(Conn,paste0("INSERT INTO ", Schema_table_prefix,"_otu_attributes.",Schema_table_prefix,"_maps VALUES ('",OTU_name,"','",bytea_ser_mapandinfo,"')"))
-#save png vs if make_png=TRUE
-  if (Make_png==TRUE){ 
-    map_plot=sp::spplot(newmap["var1.pred"], at = at,sp.layout=list("sp.lines",UK_line,col="black",lwd=2))
-    dir.create(paste0(Output_dir,"/png"), showWarnings = FALSE,recursive=TRUE)
-    png(file=paste0(Output_dir,"/png/",OTU_name,"_plot.png"),width=200,height=400)
-    print(map_plot)
-    dev.off()
-  }
+    otu_abund<-OTU_table[,OTU_name,drop=FALSE]
+                                        #make dataframe with eastings and northings 
+    dat<-cbind(Env_table[,c('eastings','northings')],otu_abund)
+    colnames(dat)[3]="OTU"
+    dat<-dat[complete.cases(dat), ]
+    attach(dat)
+                                        #specify the coordinates for the file with otu
+    sp::coordinates(dat) = ~eastings+northings
+                                        #interpolate
+    spc.idw<-gstat::krige(OTU~1,dat,Grid)
+    ukgrid = "+init=epsg:27700"
+    spc.idw@proj4string<-sp::CRS(ukgrid)
+                                        #now need to only show interpolation within UK coastline
+    overlay.idw<-sp::over(spc.idw,UK_poly)
+    newmap=spc.idw[complete.cases(overlay.idw),]
+                                        #set heat map scale, want this to be dependent on OTU abundance i.e we want to show abundance contrast relative to that OTU
+    minv=min(otu_abund)
+    maxv=max(otu_abund)
+    at=c(minv,signif(maxv/256,1),signif(maxv/128,1),signif(maxv/64,1),signif(maxv/32,1),signif(maxv/16,1),signif(maxv/8,),signif(maxv/4,2),signif(maxv/2,2),maxv)
+                                        #save map object to outdir
+    mapandinfo<-c(newmap,at)
+    save(mapandinfo,file=paste(Output_dir,"/",OTU_name,".RData",sep=""))
+                                        #Add object to database  
+                                        #need to first get object into a form suitable for SQL
+                                        #convert to stream of bytes
+    ser_mapandinfo=serialize(mapandinfo,connection=NULL,ascii=TRUE)
+                                        #convert to a form postgres will accept
+    bytea_ser_mapandinfo<-RPostgreSQL::postgresqlEscapeBytea(ser_mapandinfo,con=Conn)
+    dbSendQuery(Conn,paste0("INSERT INTO ", Schema_table_prefix,"_otu_attributes.",Schema_table_prefix,"_maps VALUES ('",OTU_name,"','",bytea_ser_mapandinfo,"')"))
+                                        #save png vs if make_png=TRUE
+    if (Make_png==TRUE){ 
+        map_plot=sp::spplot(newmap["var1.pred"], at = at,sp.layout=list("sp.lines",UK_line,col="black",lwd=2))
+        dir.create(paste0(Output_dir,"/png"), showWarnings = FALSE,recursive=TRUE)
+        png(file=paste0(Output_dir,"/png/",OTU_name,"_plot.png"),width=200,height=400)
+        print(map_plot)
+        dev.off()
+    }
 }
-}
+
 
 
 
 
 # step 3.2b
-# ```
+                                        # ```
 # Run save_otu_map function on all OTUs.
 
 # Using rparallel to parallelise -need to reauthenticate database on all cpus working on.
@@ -973,33 +975,33 @@ save_otu_map<-function(OTU_name,OTU_table,Env_table,Grid,UK_poly,UK_line,Conn,Sc
 # **r**
 # ```{R maps parallelise, eval=FALSE}
 maps_parallelise <- function(){
-#create outdir for map objects
-dir.create(paste0(Output_dir_with_occ,"/Supplementary/Map_objects"), showWarnings = FALSE,recursive=TRUE)
-#parallelise on 40 CPU
-cl<-makeCluster(40)
-#make r objs acceptable to all CPU
-clusterExport(cl,c("save_otu_map","OTU_tab_sub_occ_dec","Env_sub","grd","params","Output_dir_with_occ","Schema_table_prefix_modified","uk.poly","uk.line"))
-
-
-#need to connect to the database on all 40 cpu
-clusterEvalQ(cl, {
- library(RPostgreSQL)  
- drv=DBI::dbDriver("PostgreSQL")
- conn<- DBI::dbConnect(drv, 
-                 dbname = params$SQL_database_name,
-                 host = params$SQL_database_host, 
-                 port = '5432',
-                 user=Sys.getenv('SQL_USER'),
-                 password = Sys.getenv('SQL_PWD'))
- 
-})
-
-
-
-parSapply(cl,colnames(OTU_tab_sub_occ_dec), function(x) save_otu_map(OTU_name=x,OTU_table=OTU_tab_sub_occ_dec,Env_table=Env_sub,Grid=grd,UK_poly=uk.poly,UK_line=uk.line,Conn=conn,Schema_table_prefix=Schema_table_prefix_modified,Output_dir=paste0(Output_dir_with_occ,"/Supplementary/Map_objects"),Make_png=FALSE))
-stopCluster(cl)
-
-# ```
+                                        #create outdir for map objects
+    dir.create(paste0(Output_dir_with_occ,"/Supplementary/Map_objects"), showWarnings = FALSE,recursive=TRUE)
+                                        #parallelise on 40 CPU
+    cl<-makeCluster(40)
+                                        #make r objs acceptable to all CPU
+    clusterExport(cl,c("save_otu_map","OTU_tab_sub_occ_dec","Env_sub","grd","params","Output_dir_with_occ","Schema_table_prefix_modified","uk.poly","uk.line"))
+    
+    
+                                        #need to connect to the database on all 40 cpu
+    clusterEvalQ(cl, {
+        library(RPostgreSQL)  
+        drv=DBI::dbDriver("PostgreSQL")
+        conn<- DBI::dbConnect(drv, 
+                              dbname = params$SQL_database_name,
+                              host = params$SQL_database_host, 
+                              port = '5432',
+                              user=Sys.getenv('SQL_USER'),
+                              password = Sys.getenv('SQL_PWD'))
+        
+    })
+    
+    
+    
+    parSapply(cl,colnames(OTU_tab_sub_occ_dec), function(x) save_otu_map(OTU_name=x,OTU_table=OTU_tab_sub_occ_dec,Env_table=Env_sub,Grid=grd,UK_poly=uk.poly,UK_line=uk.line,Conn=conn,Schema_table_prefix=Schema_table_prefix_modified,Output_dir=paste0(Output_dir_with_occ,"/Supplementary/Map_objects"),Make_png=FALSE))
+    stopCluster(cl)
+    
+                                        # ```
 }
 
 ## Step 3 Make Blast database
