@@ -518,7 +518,7 @@ if (params$Use_occupancy_in_schema_table_names==TRUE){
 #abundance table per ASV when needed in app
 
 
-format_otu_for_Rsqlite <- function(abundance_csv){
+format_otu_for_Rsqlite <- function(abundance_csv, taxonomy_csv, otu_csv){
     ## Lets try not splitting to begin with
     ## Current SQL command is:
     ## CREATE TABLE IF NOT EXISTS abund_tables.<prefix>_abund_2(hit character varying(30), "<column names each followed by '" numeric, "'>" numeric, CONSTRAINT '<prefix>_abund_2_pkey PRIMARY KEY("hit"))'
@@ -536,11 +536,79 @@ format_otu_for_Rsqlite <- function(abundance_csv){
     abundance_db <- dbConnect(RSQLite::SQLite(), "abundance_db.sqlite")
     DBI::dbExecute(conn = abundance_db, statement = sql_command)
     ## Fill table
-    DBI::dbWriteTable(abundance_db, "abund_table", abundance, append = TRUE, row.names = FALSE)
+    DBI::dbWriteTable(abundance_db, "abund_table", abundance_csv, append = TRUE, row.names = FALSE)
     ## Disconnect, best practise?
     DBI::dbDisconnect(abundance_db)
 
 
+    ## Create table, taxonomy
+
+    ## "order" is an SQL command so need to escape it in quotes, easier to escape all
+    ## fields in quotes
+    
+    sql_command_taxonomy <- sprintf("create table taxonomy_table (hit character varying (30), %s character varying (250), primary key ('hit'))",
+                                    paste('"',colnames(abundance_csv),'"',
+                                          collapse=' charater varying(250),',
+                                          sep='')
+                                    )
+
+    ## Create table, taxonomy
+    taxonomy_db <- dbConnect(RSQLite::SQLite(), "taxonomy_db.sqlite")
+    DBI::dbExecute(conn = taxonomy_db, statement = sql_command)
+    ## Fill table
+    DBI::dbWriteTable(taxonomy_db, "taxonomy_table", taxonomy_csv, append = TRUE, row.names = FALSE)
+    ## Disconnect, best practise?
+    DBI::dbDisconnect(taxonomy_db)
+
+
+    ## Create OTU table
+
+    sql_command_otu <- sprintf("create table otu_table (hit character varying (30), %s character varying (30), primary key ('hit'))",
+                                    paste('"',colnames(otu_csv),'"',
+                                          collapse=' charater varying(250),',
+                                          sep='')
+                                    )
+
+    ## Create table, otu
+    otu_db <- dbConnect(RSQLite::SQLite(), "otu_db.sqlite")
+    DBI::dbExecute(conn = otu_db, statement = sql_command)
+    ## Fill table
+    DBI::dbWriteTable(otu_db, "otu_table", otu_csv, append = TRUE, row.names = FALSE)
+    ## Disconnect, best practise?
+    DBI::dbDisconnect(otu_db)
+    
+
+    ## Create maps table
+
+
+    sql_command_maps <- sprintf("create table otu_attributes_table (hit character varying (30), map_object bytea, primary key ('hit'))")
+    
+
+    ## Create table, maps
+    maps_db <- dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
+    DBI::dbExecute(conn = maps_db, statement = sql_command)
+
+    #Fill maps later
+
+    ## Fill table
+##    DBI::dbWriteTable(maps_db, "maps_table", maps_csv, append = TRUE, row.names = FALSE)
+    ## Disconnect, best practise?
+    DBI::dbDisconnect(maps_db)
+
+                                        #Create empty maps table within otu_attributes_schema
+    dbExecute(conn=conn,paste0('CREATE TABLE IF NOT EXISTS ', # SQL command
+                               Schema_table_prefix_modified,  #table name start
+                               '_otu_attributes.',
+                               Schema_table_prefix_modified, # table name ends as '_maps'
+                               '_maps(hit character varying(30),map_object bytea, CONSTRAINT '
+                              ,Schema_table_prefix_modified, #primary key_name
+                               '_maps_pkey PRIMARY KEY ("hit"));'
+                               )
+              )
+                                        #will fill maps table in step 3 using save_otu_map function
+
+
+    
 }
 
 
@@ -662,6 +730,13 @@ format_otu_for_sql <- function(){
                                         # schema ,field name 'order' is in double quotes
                                         # as it is also a SQL command
     
+    ## CREATE TABLE IF NOT EXISTS abund_tables(hit character varying(30), "<column names each followed by '" numeric, "'>" numeric, CONSTRAINT '<prefix>_abund_2_pkey PRIMARY KEY("hit"))'
+
+    ##     paste0('CREATE TABLE IF NOT EXISTS otu_attributes_taxonomy(hit character varying(30),kingdom character varying(250),phylum character varying(250),class character varying(250),"order" character varying(250),family character varying(250),genus character varying(250),species character varying(250), CONSTRAINT taxonomy_pkey PRIMARY KEY ("hit"))'
+
+    ## CREATE TABLE IF NOT EXISTS otu_attributes_taxonomy(hit character varying(30),kingdom character varying(250),phylum character varying(250),class character varying(250),"order" character varying(250),family character varying(250),genus character varying(250),species character varying(250), CONSTRAINT taxonomy_pkey PRIMARY KEY ("hit"))'
+
+
     dbExecute(conn=conn,
               paste0('CREATE TABLE IF NOT EXISTS ',
                      Schema_table_prefix_modified,
@@ -690,16 +765,29 @@ format_otu_for_sql <- function(){
                                         # otu_attributes schema
 
 ##### Create new table, OTU
+
+    ## CREATE TABLE IF NOT EXISTS abund_tables(hit character varying(30), "<column names each followed by '" numeric, "'>" numeric, CONSTRAINT '<prefix>_abund_2_pkey PRIMARY KEY("hit"))'
+
     
-    dbExecute(conn=conn,paste0('CREATE TABLE IF NOT EXISTS ',
-                               Schema_table_prefix_modified,
+    dbExecute(conn=conn,paste0('CREATE TABLE IF NOT EXISTS ', #sql command
+                               Schema_table_prefix_modified, ## table name start
                                '_otu_attributes.',
-                               Schema_table_prefix_modified,
+                               Schema_table_prefix_modified, #table name ends as _abundace_stats
                                '_abundance_stats(hit character varying(30),abundance_rank character varying(30),occupancy_proportion character varying(30), CONSTRAINT ',
-                               Schema_table_prefix_modified,
+                               Schema_table_prefix_modified,  # priary key name start
                                '_abundance_stats_pkey PRIMARY KEY ("hit"));'
                                )
               )
+
+
+        sql_command_taxonomy <- sprintf("create table otu_table (hit character varying (30), %s character varying (30), primary key ('hit'))",
+                                    paste('"',colnames(otu_csv),'"',
+                                          collapse=' charater varying(250),',
+                                          sep='')
+                                    )
+
+
+    
                                         #add data from data frame to empty abundance stats table  
     append_cmd = sqlAppendTable(con=conn,table=Id(schema=paste0(Schema_table_prefix_modified,
                                                                 "_otu_attributes"),
@@ -710,14 +798,18 @@ format_otu_for_sql <- function(){
                                 )
     
     dbExecute(conn=conn,statement=append_cmd)
+
+    ## CREATE TABLE IF NOT EXISTS abund_tables(hit character varying(30), "<column names each followed by '" numeric, "'>" numeric, CONSTRAINT '<prefix>_abund_2_pkey PRIMARY KEY("hit"))'
+
+
     
                                         #Create empty maps table within otu_attributes_schema
-    dbExecute(conn=conn,paste0('CREATE TABLE IF NOT EXISTS ',
-                               Schema_table_prefix_modified,
+    dbExecute(conn=conn,paste0('CREATE TABLE IF NOT EXISTS ', # SQL command
+                               Schema_table_prefix_modified,  #table name start
                                '_otu_attributes.',
-                               Schema_table_prefix_modified,
+                               Schema_table_prefix_modified, # table name ends as '_maps'
                                '_maps(hit character varying(30),map_object bytea, CONSTRAINT '
-                              ,Schema_table_prefix_modified,
+                              ,Schema_table_prefix_modified, #primary key_name
                                '_maps_pkey PRIMARY KEY ("hit"));'
                                )
               )
