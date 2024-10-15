@@ -437,87 +437,44 @@ prepair_taxonomy_table <- function(input_file, output_file, OTU_abund_filter_fil
 #####################################################################
 #####################################################################
 
+## Steps 2.1, 2.2, and 2.3 have all been replaced with a single "Step 2"
+## Step 2.1 used to setup the SQL db
+## Step 2.2 modified the table name based on the abundance cut
+## Step 2.3 populated the tables
+## The single step 2 now creates the SQLite files and populates them in
+## one function.
 
 
-
-### Step 2 Create Database tables, and populate with tables produced in Step 1
-
-
-
-# Step 2.1
-
-#### If this is a blank DB (e.g no other taxonomic datasets have previously been added) more setup will be needed
-# Create all schemas and add env & plotting tools data
-
-# ```{r setup database if no previous data added,eval=FALSE}
-#Bit belt and braces with r and sql mechanisms to stop any accidental env/ plotting tools data duplication
-#if Empty_database parameter set to TRUE
-
-setup_R_db <- function(){
-if(params$Empty_database==TRUE){
-  #Create empty plotting_tools schema if doesnt already exist (this is just going to be used to store generic   plotting objects- currently just uk map outline)
-  dbExecute(conn=conn,"CREATE SCHEMA IF NOT EXISTS plotting_tools;")
-  #create map_tools table within plotting_tools schema if doesnt already exist 
-  #make description a primary key -primary keys ensure that col contains unique values
-  dbExecute(conn=conn,'CREATE TABLE IF NOT EXISTS plotting_tools.map_tools(description character varying(250),plot_object bytea,CONSTRAINT map_tools_pkey PRIMARY KEY (description));')
-  #add map outline to table
-  #first read in 
-  uk.line<-rgdal::readOGR(paste0(params$Map_objs_input_dir,"/ukcoast_line.shp"))
-  #convert to stream of bytes
-  ser_uk.line=serialize(uk.line,connection=NULL,ascii=TRUE)
-  #convert to a form postgres will accept
-  bytea_ser_uk.line=RPostgreSQL::postgresqlEscapeBytea(ser_uk.line,con=conn)
-  #populate plotting_tools.map_tools table
-  #if 'map_outline' primary key already exists error will be produced 
-  dbSendQuery(conn, paste0("INSERT Into plotting_tools.map_tools VALUES('map_outline','",bytea_ser_uk.line,"')"))
-  #create empty env_attributes schema if doesnt already exist
-  dbExecute(conn=conn,"CREATE SCHEMA IF NOT EXISTS env_attributes;")
-  #create env table  within env_attributes schema
-  #make sample primary key
-  dbExecute(conn=conn,'CREATE TABLE IF NOT EXISTS env_attributes.env_attributes_all(sample character varying(250),avc_code numeric ,avc character varying(250),ph numeric,CONSTRAINT env_attributes_all_pkey PRIMARY KEY (sample));')
-  #populate env table if any primary keys already exist errors will be produced
-  append_cmd=sqlAppendTable(con=conn,table=Id(schema="env_attributes",table="env_attributes_all"), values =Env_for_SQL, row.names = FALSE )
-  dbExecute(conn=conn,statement=append_cmd)
-  #create abund_tables schema if doesnt already exist
-  dbExecute(conn=conn,"CREATE SCHEMA IF NOT EXISTS abund_tables;")
-  #create abund_table_descriptions table for recording abundance table preprocessing used
-  #make abundance_table_name primary key
-  dbExecute(conn=conn,"CREATE TABLE IF NOT EXISTS abund_tables.abund_table_descriptions(abund_table_name character varying(40),sample_read_filt character varying(40),otu_occupancy_filt character varying(40),normalisation character varying(40),further_notes character varying(80), CONSTRAINT abund_table_descriptions_pkey PRIMARY KEY (abund_table_name));")
-  }
-}
-
-# ```
-
-
-# Step 2.2
-
-#### Create and populate tables specific to this taxonomic dataset 
-
-# Create and populate otu_abund, taxonomy and abundance_stats tables.
-# Create maps table, but populate in step 3.
-
-# ```{r Add to database,eval=FALSE}
-
-#modify schema_table_prefix if params$Use_occupancy_in_schema_table_names is TRUE
-modify_schema_table_prefix <- function(){
-if (params$Use_occupancy_in_schema_table_names==TRUE){
-  Schema_table_prefix_modified=paste0(params$Schema_table_prefix,"_occ_",params$OTU_tab_occ_filter)
-}else{Schema_table_prefix_modified=params$Schema_table_prefix}
-}
-
-
-
-
-#step 2.3
-
-#make otu table structure going to transpose our dataframe to make samples
-#columns and otus rows as sql tables can only have 1600 columns-apparently also
-#want to include otu names (currently colnames/ rownames when transposed) as
-#column called "hit" even with colnames being samples rows, are still too big so
-#separating tables into two(column wise), can easily use a join to get full
-#abundance table per ASV when needed in app
-
-
+## Step 2
+#' Put the filtered OTU, taxonomy, and abundance files into RSQLite files
+#'
+#' @description
+#' Put the filtered OTU, taxonomy, and abundance files into RSQLite files
+#' 
+#' @details
+#' Reads in the filtered OTU, taxonomy, and abundance files, and creates corresponding
+#' tables in an RSQLite file
+#'
+#' @param input_file filtered OTU table
+#' @param input_file filtered abundance table
+#' @param input_file filtered taxonomy table
+#' 
+#' @return None
+#'
+#' @examples
+#'
+#'
+#' prepair_taxonomy_table(
+#'     OTU_abund_filter_file = paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/OTU_abund.csv",
+#'     input_file = params$Tax_file # basic_preprocessed/Taxonomy.csv,
+#'     output_file = paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/Taxonomy.csv")
+#' )
+#'
+#' @note
+#'
+#' format_otu_for_Rsqlite(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv)
+#' 
+#' 
 format_otu_for_Rsqlite <- function(abundance_csv, taxonomy_csv, otu_csv){
     ## Lets try not splitting to begin with
     ## Current SQL command is:
@@ -612,8 +569,82 @@ format_otu_for_Rsqlite <- function(abundance_csv, taxonomy_csv, otu_csv){
 }
 
 
+### Step 2 Create Database tables, and populate with tables produced in Step 1
 
 
+
+# Step 2.1
+
+#### If this is a blank DB (e.g no other taxonomic datasets have previously been added) more setup will be needed
+# Create all schemas and add env & plotting tools data
+
+# ```{r setup database if no previous data added,eval=FALSE}
+#Bit belt and braces with r and sql mechanisms to stop any accidental env/ plotting tools data duplication
+#if Empty_database parameter set to TRUE
+
+setup_R_db <- function(){
+if(params$Empty_database==TRUE){
+  #Create empty plotting_tools schema if doesnt already exist (this is just going to be used to store generic   plotting objects- currently just uk map outline)
+  dbExecute(conn=conn,"CREATE SCHEMA IF NOT EXISTS plotting_tools;")
+  #create map_tools table within plotting_tools schema if doesnt already exist 
+  #make description a primary key -primary keys ensure that col contains unique values
+  dbExecute(conn=conn,'CREATE TABLE IF NOT EXISTS plotting_tools.map_tools(description character varying(250),plot_object bytea,CONSTRAINT map_tools_pkey PRIMARY KEY (description));')
+  #add map outline to table
+  #first read in 
+  uk.line<-rgdal::readOGR(paste0(params$Map_objs_input_dir,"/ukcoast_line.shp"))
+  #convert to stream of bytes
+  ser_uk.line=serialize(uk.line,connection=NULL,ascii=TRUE)
+  #convert to a form postgres will accept
+  bytea_ser_uk.line=RPostgreSQL::postgresqlEscapeBytea(ser_uk.line,con=conn)
+  #populate plotting_tools.map_tools table
+  #if 'map_outline' primary key already exists error will be produced 
+  dbSendQuery(conn, paste0("INSERT Into plotting_tools.map_tools VALUES('map_outline','",bytea_ser_uk.line,"')"))
+  #create empty env_attributes schema if doesnt already exist
+  dbExecute(conn=conn,"CREATE SCHEMA IF NOT EXISTS env_attributes;")
+  #create env table  within env_attributes schema
+  #make sample primary key
+  dbExecute(conn=conn,'CREATE TABLE IF NOT EXISTS env_attributes.env_attributes_all(sample character varying(250),avc_code numeric ,avc character varying(250),ph numeric,CONSTRAINT env_attributes_all_pkey PRIMARY KEY (sample));')
+  #populate env table if any primary keys already exist errors will be produced
+  append_cmd=sqlAppendTable(con=conn,table=Id(schema="env_attributes",table="env_attributes_all"), values =Env_for_SQL, row.names = FALSE )
+  dbExecute(conn=conn,statement=append_cmd)
+  #create abund_tables schema if doesnt already exist
+  dbExecute(conn=conn,"CREATE SCHEMA IF NOT EXISTS abund_tables;")
+  #create abund_table_descriptions table for recording abundance table preprocessing used
+  #make abundance_table_name primary key
+  dbExecute(conn=conn,"CREATE TABLE IF NOT EXISTS abund_tables.abund_table_descriptions(abund_table_name character varying(40),sample_read_filt character varying(40),otu_occupancy_filt character varying(40),normalisation character varying(40),further_notes character varying(80), CONSTRAINT abund_table_descriptions_pkey PRIMARY KEY (abund_table_name));")
+  }
+}
+
+# ```
+
+
+# Step 2.2
+
+#### Create and populate tables specific to this taxonomic dataset 
+
+# Create and populate otu_abund, taxonomy and abundance_stats tables.
+# Create maps table, but populate in step 3.
+
+# ```{r Add to database,eval=FALSE}
+
+#modify schema_table_prefix if params$Use_occupancy_in_schema_table_names is TRUE
+modify_schema_table_prefix <- function(){
+if (params$Use_occupancy_in_schema_table_names==TRUE){
+  Schema_table_prefix_modified=paste0(params$Schema_table_prefix,"_occ_",params$OTU_tab_occ_filter)
+}else{Schema_table_prefix_modified=params$Schema_table_prefix}
+}
+
+#step 2.3
+
+#make otu table structure going to transpose our dataframe to make samples
+#columns and otus rows as sql tables can only have 1600 columns-apparently also
+#want to include otu names (currently colnames/ rownames when transposed) as
+#column called "hit" even with colnames being samples rows, are still too big so
+#separating tables into two(column wise), can easily use a join to get full
+#abundance table per ASV when needed in app
+
+
+##Replaced with format_otu_for_Rsqlite
 format_otu_for_sql <- function(){
     otu_tab_for_SQL_precursor=t(OTU_tab_sub_occ_dec)
                                         #split into two, also add row names to both (hit col)
@@ -838,7 +869,7 @@ format_otu_for_sql <- function(){
 
 map_prep <-function(){
                                         #first lets get env in the same order as otu table
-    Env_sub=Env[row.names(OTU_tab_sub_occ_dec),]
+    Env_sub = Env[row.names(OTU_tab_sub_occ_dec),]
     identical(row.names(Env_sub),row.names(OTU_tab_sub_occ_dec))
                                         #read in some shapefiles (georeferenced maps of uk)
                                         # uk polygon
