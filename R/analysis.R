@@ -588,49 +588,64 @@ format_otu_for_Rsqlite <- function(abundance_csv, taxonomy_csv, otu_csv){
 ## below could be separated out??
 ############
 
-map_prep <-function(){
-                                        #first lets get env in the same order as otu table
+## Inputs?
+## var= OTU_tab_sub_occ_de
+## file= /ukcoast1.shp
+## file= /ukcoast_line.shp
+
+map_prep <- function(){
+                                        # first lets get env in the same order as otu table
     Env_sub = Env[row.names(OTU_tab_sub_occ_dec),]
+                                        # Isnt this just a "test" so does nothing?
     identical(row.names(Env_sub),row.names(OTU_tab_sub_occ_dec))
-                                        #read in some shapefiles (georeferenced maps of uk)
+                                        # read in some shapefiles (georeferenced maps of uk)
                                         # uk polygon
-    uk.poly<-rgdal::readOGR(paste0(params$Map_objs_input_dir,"/ukcoast1.shp"))
+    uk.poly <- rgdal::readOGR(paste0(params$Map_objs_input_dir,"/ukcoast1.shp"))
                                         # outline of uk
-    uk.line<-rgdal::readOGR(paste0(params$Map_objs_input_dir,"/ukcoast_line.shp"))
-                                        #grid references of maps are in latitude longitude, but CS data coords are in eastings/northings
-                                        #some conversion trickery is required
-                                        #before trickery we can define some conversion parameters
+    uk.line <- rgdal::readOGR(paste0(params$Map_objs_input_dir,"/ukcoast_line.shp"))
+
+                                        # British National Grid System is square for UK.
+                                        # Need to project maps long-lat onto this as
+                                        # country side survey data is in easting/northings
+                                        # grid system.
+                                        # grid references of maps are in latitude longitude,
+                                        # but CS data coords are in eastings/northings
+                                        # some conversion trickery is required
+                                        # before trickery we can define some conversion parameters
     ukgrid = "+init=epsg:27700"
     latlong = "+init=epsg:4326"
-                                        #tell r what the current projections are of the maps
-                                        #set the CRS (coordinate reference system) field
+                                        # tell r what the current projections are of the maps
+                                        # set the CRS (coordinate reference system) field
     uk.poly@proj4string = CRS(latlong)
-                                        #set the CRS field
+                                        # set the CRS field
     uk.line@proj4string = CRS(latlong)
-                                        #transform
-                                        #transform coordinates to eastings northings
+                                        # transform
+                                        # transform coordinates to eastings northings
     uk.poly = spTransform(uk.poly, CRS(ukgrid))
-                                        #transform coordinates to eastings northings
+                                        # transform coordinates to eastings northings
     uk.line = spTransform(uk.line, CRS(ukgrid))
     
-                                        #check
+                                        # check
     plot(uk.poly)
     plot(uk.line,add=T,col="red")
     
-                                        #make a grid spanning uk, with which to interpolate
-                                        #not sure what this does really
-    g<-fortify(uk.poly)
+                                        # make a grid spanning uk, with which to interpolate
+                                        # not sure what this does really
+    g <- fortify(uk.poly)
     coordinates(g) = ~long+lat
     x.range <- as.integer(range(g@coords[,1]))
     y.range <- as.integer(range(g@coords[,2]))
-                                        #specify spatial data as being gridded
-    grd <- expand.grid(x=seq(from=x.range[1], to=x.range[2], by=5000), y=seq(from=y.range[1], to=y.range[2], by=5000) )
+                                        # specify spatial data as being gridded
+    grd <- expand.grid(x=seq(from=x.range[1], to=x.range[2], by=5000),
+                       y=seq(from=y.range[1], to=y.range[2], by=5000)
+                       )
+
     coordinates(grd) <- ~ x+y
+
     gridded(grd) <- TRUE
-                                        #check
+                                        # check
     plot(grd)
     plot(uk.poly,add=T,col="red")
-                                        # ```
 }
 
 
