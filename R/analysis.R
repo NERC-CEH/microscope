@@ -324,7 +324,7 @@ clean_OTU_table <- function(input_file, output_file, OTU_table_occupancy_filter=
 #' DB in step 2). In this code chunk saved to `r
 #' params$Output_dir`/Supplementary/Tables_in_SQL subfolder for reference.
 #'
-#' @param input_file filtered OTU table (created in step 1.2
+#' @param input_file filtered OTU table (created in step 1.2)
 #' @param output_file name to use for the output file, filtered abundace stats
 #' 
 #' @return None
@@ -578,31 +578,51 @@ format_otu_for_Rsqlite <- function(abundance_csv, taxonomy_csv, otu_csv){
 # ```{R map prep, eval=FALSE}
 
 
-#######
-#######
-#######
-## rel notes ##
-##  looks like this sets up a series of functions and variables to be used in a latter step to make a db.
-## This last part maybe much harder to split up.   Need to focus on first parts and leave this until later.
-## Perhaps it would be better to move to SQLite????  Perhaps some of the functions to setup, like grid bit
-## below could be separated out??
-############
 
-## Inputs?
-## var= OTU_tab_sub_occ_de
-## file= /ukcoast1.shp
-## file= /ukcoast_line.shp
+## Step 3.1 Map preperation
+#' Put the filtered OTU, taxonomy, and abundance files into RSQLite files
+#'
+#' @description
+#' Step 3 Make map objects for DB
+#' 
+#' @details
+#' Step 3 Make map objects for DB
+#'
+#' @param otu_table filtered OTU table (created in step 1.2)
+#' @param ukcoast_poly shape file of uk polygon
+#' @param ukcoast_line shape file of uk outline
+#'
+#' @return None
+#'
+#' @examples
+#'
+#' map_prep(otu_table="/Supplementary/Tables_in_SQL/OTU_abund.csv"
+#'          ukcoast_poly=paste0(params$Map_objs_input_dir,"/ukcoast1.shp"),
+#'          ukcoast_line=paste0(params$Map_objs_input_dir,"/ukcoast_line.shp")
+#'         )
+#' 
+#' @note
+#'
+#' abund_table is called by env name: OTU_tab_sub_occ_dec
+#' looks like this sets up a series of functions and variables to be used in a latter step
+#' to make a db. This last part maybe much harder to split up.   Need to focus on first
+#' parts and leave this until later. Perhaps it would be better to move to SQLite????
+#' Perhaps some of the functions to setup, like grid bit
+#'
+map_prep <- function(otu_table, ukcoast_poly, ukcoast_line)
 
-map_prep <- function(){
+                                        #read in OTU_tab
+    OTU_table=data.frame(fread(otu_table),row.names=1,check.names=FALSE)
+
                                         # first lets get env in the same order as otu table
-    Env_sub = Env[row.names(OTU_tab_sub_occ_dec),]
+    Env_sub = Env[row.names(OTU_table),]
                                         # Isnt this just a "test" so does nothing?
-    identical(row.names(Env_sub),row.names(OTU_tab_sub_occ_dec))
+    identical(row.names(Env_sub),row.names(OTU_table))
                                         # read in some shapefiles (georeferenced maps of uk)
                                         # uk polygon
-    uk.poly <- rgdal::readOGR(paste0(params$Map_objs_input_dir,"/ukcoast1.shp"))
+    uk.poly <- rgdal::readOGR(ukcoast_poly)                                    )
                                         # outline of uk
-    uk.line <- rgdal::readOGR(paste0(params$Map_objs_input_dir,"/ukcoast_line.shp"))
+    uk.line <- rgdal::readOGR(ukcoast_line)
 
                                         # British National Grid System is square for UK.
                                         # Need to project maps long-lat onto this as
@@ -688,7 +708,9 @@ map_prep <- function(){
                                         # **r**
                                         # ```{R maps function, eval=FALSE}
 
+##  What is this for??
 map_function <- function(){}
+
 save_otu_map<-function(OTU_name,OTU_table,Env_table,Grid,UK_poly,UK_line,Conn,Schema_table_prefix,Output_dir,Make_png){
     otu_abund<-OTU_table[,OTU_name,drop=FALSE]
                                         #make dataframe with eastings and northings 
