@@ -536,10 +536,10 @@ format_otu_for_Rsqlite <- function(abundance_csv, taxonomy_csv, otu_csv){
     
 
     ## Create maps table
-
-
-    sql_command_maps <- sprintf("create table otu_attributes_table (hit character varying (30), map_object bytea, primary key ('hit'))")
-    
+    ## Postgresql use bytea as the data type, but sqlite does not have this
+    ## equvilant is "blob" so changing bytea to blob for this.
+    ## https://jfaganuk.github.io/2015/01/12/storing-r-objects-in-sqlite-tables/
+    sql_command_maps <- sprintf("create table otu_attributes_table (hit character varying (30), map_object blob, primary key ('hit'))")
 
     ## Create table, maps
     maps_db <- dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
@@ -548,24 +548,12 @@ format_otu_for_Rsqlite <- function(abundance_csv, taxonomy_csv, otu_csv){
     #Fill maps later
 
     ## Fill table
-##    DBI::dbWriteTable(maps_db, "maps_table", maps_csv, append = TRUE, row.names = FALSE)
+    ## DBI::dbWriteTable(maps_db, "maps_table", maps_csv, append = TRUE, row.names = FALSE)
     ## Disconnect, best practise?
     DBI::dbDisconnect(maps_db)
 
-                                        #Create empty maps table within otu_attributes_schema
-    dbExecute(conn=conn,paste0('CREATE TABLE IF NOT EXISTS ', # SQL command
-                               Schema_table_prefix_modified,  #table name start
-                               '_otu_attributes.',
-                               Schema_table_prefix_modified, # table name ends as '_maps'
-                               '_maps(hit character varying(30),map_object bytea, CONSTRAINT '
-                              ,Schema_table_prefix_modified, #primary key_name
-                               '_maps_pkey PRIMARY KEY ("hit"));'
-                               )
-              )
-                                        #will fill maps table in step 3 using save_otu_map function
-
-
-    
+    ## will fill maps table in step 3 using save_otu_map function
+   
 }
 
 
@@ -603,6 +591,8 @@ format_otu_for_Rsqlite <- function(abundance_csv, taxonomy_csv, otu_csv){
 #' 
 #' @note
 #'
+#' Running this as separate function, btu perhaps this should be the start of another function?
+#' 
 #' abund_table is called by env name: OTU_tab_sub_occ_dec
 #' looks like this sets up a series of functions and variables to be used in a latter step
 #' to make a db. This last part maybe much harder to split up.   Need to focus on first
@@ -719,28 +709,41 @@ map_prep <- function(otu_table, ukcoast_poly, ukcoast_line)
 ##  What is this for??
 map_function <- function(){}
 
-save_otu_map <- function(OTU_name,
-                         OTU_table,
-                         Env_table,
-                         Grid,
-                         UK_poly,
-                         UK_line,
-                         Conn,
-                         Schema_table_prefix,
-                         Output_dir,
-                         Make_png
+save_otu_map <- function(OTU_name,  # Not sure what this is.
+                         OTU_table, # filtered table
+                         Env_table, # Env_sub #created in map_prep
+                         Grid,      # created in map_prep
+                         UK_poly,   # uk.poly #created in map_prep
+                         UK_line,   # uk.line #created in map_prep
+                         Conn,      # SQLdb, removed so correct
+                         Schema_table_prefix, # removed for time being
+                         Output_dir, # again, abandoned in favour of dir in string
+                         Make_png # flag
                          ){
 
+    ## drop=FALSE protects against conversion to vector instead of dataframe
+    ## OTU_name is column selection of some kind, need to find definition and
+    ## reasoning
     otu_abund <- OTU_table[,OTU_name,drop=FALSE]
 
-                                        #make dataframe with eastings and northings 
+                                        #make dataframe with eastings and northings
+                                        # binds to otu_abund as well?
     dat <- cbind(Env_table[,c('eastings','northings')],otu_abund)
     colnames(dat)[3] = "OTU"
     dat <- dat[complete.cases(dat), ]
     attach(dat)
+
                                         #specify the coordinates for the file with otu
+
+    ## could we expans this to:
+    ## sp::coordinates(dat) = ~dat$eastings+dat$northings  as attach puts columns in namespace?
     sp::coordinates(dat) = ~eastings+northings
                                         #interpolate
+
+    ## What are we doing here?
+    ## Don't need to know, focus on whole code.
+    ## Can we split into a new called function?
+        
     spc.idw <- gstat::krige(OTU~1,dat,Grid)
     ukgrid = "+init=epsg:27700"
     spc.idw@proj4string <- sp::CRS(ukgrid)
@@ -770,20 +773,44 @@ save_otu_map <- function(OTU_name,
                                         #need to first get object into a form suitable for SQL
                                         #convert to stream of bytes
 
+    ## Serialise converts all pointers and links to objects into one object
+    ## so that it can be saved or transferred
     ser_mapandinfo = serialize(mapandinfo,connection=NULL,ascii=TRUE)
 
-                                        #convert to a form postgres will accept
-    bytea_ser_mapandinfo <- RPostgreSQL::postgresqlEscapeBytea(ser_mapandinfo,con=Conn)
+    ## Need to convert to RSQLite.   Not sure how serialise affects this.  Hard to generate
+    ## in an interactive session as I don' fully understand it.
 
-    dbSendQuery(Conn,
-                paste0("INSERT INTO ",
-                       Schema_table_prefix,
-                       "_otu_attributes.",
-                       Schema_table_prefix,
-                       "_maps VALUES ('",OTU_name,"','",bytea_ser_mapandinfo,"')"
-                       )
-                )
-                                        #save png vs if make_png=TRUE
+####    This is the sqlite table creation code.  DUmping for reference as I
+####    figure out how to "INSERT" data    
+####
+####
+####    ## Create maps table
+####    ## blob was bytea
+####    sql_command_maps <- sprintf("create table otu_attributes_table (hit character varying (30), map_object blob, primary key ('hit'))")
+####
+####    ## Create table, maps
+####    maps_db <- dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
+####    DBI::dbExecute(conn = maps_db, statement = sql_command)
+####
+####    #Fill maps later
+####
+####    ## Fill table
+####    ## DBI::dbWriteTable(maps_db, "maps_table", maps_csv, append = TRUE, row.names = FALSE)
+####    ## Disconnect, best practise?
+####    DBI::dbDisconnect(maps_db)
+
+    ## will fill maps table in step 3 using save_otu_map function
+
+
+    ## https://stackoverflow.com/questions/70285267/r-dbgetquery-insert-blob-data-with-other-text-data
+    ## NEED TO WRITE A DB EXECUTE AND INSERT COMMAND
+    
+    ## convert to a form postgres will accept
+    ## bytea_ser_mapandinfo <- RPostgreSQL::postgresqlEscapeBytea(ser_mapandinfo,con=Conn)
+
+    sql_command_maps <- sprintf("insert into maps_table values (?, ?)")
+    DBI::dbExecute(maps_db, sql_command_maps, list(OTU_name, ser_mapandinfo)
+    DBI::dbDisconnect(maps_db)                                                                      
 
     if (Make_png==TRUE){ 
         map_plot = sp::spplot(newmap["var1.pred"],
@@ -832,9 +859,10 @@ maps_parallelise <- function(){
                               host = params$SQL_database_host, 
                               port = '5432',
                               user=Sys.getenv('SQL_USER'),
-                              password = Sys.getenv('SQL_PWD'))
-        
-    })
+                              password = Sys.getenv('SQL_PWD')
+                              )
+    }
+    )
     
     
     
@@ -848,41 +876,40 @@ maps_parallelise <- function(){
 
 ###  3.3 Filter fasta file to contain OTU sequences that meet occupancy filter
 
-#Need to filter sequences prior to making blast DB otherwise we will have hits
-#in BLast DB with no supplementary info (i.e we dont want to keep sequences
-#corresponding to OTU's/ ASV's that did not meet occupancy filter)
-# Doing this using biopython.
+## Need to filter sequences prior to making blast DB otherwise we will have hits
+## in BLast DB with no supplementary info (i.e we dont want to keep sequences
+## corresponding to OTU's/ ASV's that did not meet occupancy filter)
+## Doing this using biopython.
 
 
 make_blast_py <- function(){
-# **python**
-# ```{python filter fasta file, eval=FALSE}
-from Bio import SeqIO
-import os
-#get OTUs we want to keep from OTU table
-#python can access r variables within markdown and converts our r dataframe into a dictionary- the keys are the OTU names
-OTU_tab_dict=r.OTU_tab_sub_occ_dec
-#make output dir for filtered fasta
-if not os.path.exists(r.Output_dir_with_occ+"/Supplementary/Filtered_sequences"):
-  os.makedirs(r.Output_dir_with_occ+"/Supplementary/Filtered_sequences")
-#only keep records in filtered otu tab (dictionary keys) 
-#see http://biopython.org/DIST/docs/tutorial/Tutorial.html#sec372 for reference
-records=(record for record in SeqIO.parse(r.params["Fasta_file"],"fasta") if record.id in OTU_tab_dict.keys())
-SeqIO.write(records, r.Output_dir_with_occ+"/Supplementary/Filtered_sequences/filtered_sequences.fasta", "fasta")
-# ```
+    ## **python**
+    ## ```{python filter fasta file, eval=FALSE}
+    from Bio import SeqIO
+    import os
+    ## get OTUs we want to keep from OTU table
+    ## python can access r variables within markdown and converts our r dataframe into a dictionary- the keys are the OTU names
+    OTU_tab_dict = r.OTU_tab_sub_occ_dec
+    ## make output dir for filtered fasta
+    if not os.path.exists(r.Output_dir_with_occ+"/Supplementary/Filtered_sequences"):
+               os.makedirs(r.Output_dir_with_occ+"/Supplementary/Filtered_sequences")
+    ## only keep records in filtered otu tab (dictionary keys) 
+    ## see http://biopython.org/DIST/docs/tutorial/Tutorial.html#sec372 for reference
+    records = (record for record in SeqIO.parse(r.params["Fasta_file"],"fasta") if record.id in OTU_tab_dict.keys())
+    SeqIO.write(records, r.Output_dir_with_occ+"/Supplementary/Filtered_sequences/filtered_sequences.fasta", "fasta")
+    ## ```
 }
 
 ###  3.4 Make blast database
-
 # Take filtered fasta and make blast database for back end of shiny app
 
 make_blast_bash <- function(){
-# **Bash:**
-# ```{bash BlastDB, eval=FALSE}
-#cmake makes dir and any parent dirs necessary
-cmake -E make_directory $Output_dir_with_occ/App/Blast_DB
-makeblastdb -in $Output_dir_with_occ/Supplementary/Filtered_sequences/filtered_sequences.fasta -dbtype nucl -out $Output_dir_with_occ/App/Blast_DB/Blast_DB
-# ```
+    ## **Bash:**
+    ## ```{bash BlastDB, eval=FALSE}
+    ## cmake makes dir and any parent dirs necessary
+    cmake -E make_directory $Output_dir_with_occ/App/Blast_DB
+    makeblastdb -in $Output_dir_with_occ/Supplementary/Filtered_sequences/filtered_sequences.fasta -dbtype nucl -out $Output_dir_with_occ/App/Blast_DB/Blast_DB
+    ## ```
 }
 
 
@@ -890,51 +917,51 @@ makeblastdb -in $Output_dir_with_occ/Supplementary/Filtered_sequences/filtered_s
 
 create_app_python <-function(){
 #### 4 Create app front-end from template
-
-# Using python to edit r code - find python easiest option for file handling
-
-# **Python:**
-# ```{python create app, eval=FALSE}
-import re
-#get blank template path using R App_template parameter  
-blank_template=r.params["App_template_input_dir"]+"/Blank_taxonomic_explorer_app_with_functional_place_holders.R"
-#open blank_template
-with open(blank_template,'r') as blank_template_file:
-#open output file  
-  with open(r.Output_dir_with_occ+"/App/App.R",'w') as customised_file:
-#loop over lines 
+    
+    ## Using python to edit r code - find python easiest option for file handling
+    
+    ## **Python:**
+    ## ```{python create app, eval=FALSE}
+    import re
+    ## get blank template path using R App_template parameter  
+    blank_template=r.params["App_template_input_dir"]+"/Blank_taxonomic_explorer_app_with_functional_place_holders.R"
+    ## open blank_template
+    with open(blank_template,'r') as blank_template_file:
+                                         ## open output file  
+                                         with open(r.Output_dir_with_occ+"/App/App.R",'w') as customised_file:
+### loop over lines 
     for line in blank_template_file:
-#empty array for any placeholder strings that need to be replaced within that line 
-      occurence_strings=[]
-#get all indices where placeholder  starts("<--")
-      occurence_starts= [i.start() for i in re.finditer("<--",line)]
-#if there are any beginnings of placeholders in the line  continue   
-      if (len(occurence_starts)!=0):
-#get all indices  of the end of place holder/s "-->"  
+                    ## empty array for any placeholder strings that need to be replaced within that line 
+                    occurence_strings=[]
+    ## get all indices where placeholder  starts("<--")
+    occurence_starts= [i.start() for i in re.finditer("<--",line)]
+    ## if there are any beginnings of placeholders in the line  continue   
+    if (len(occurence_starts)!=0):
+        ## get all indices  of the end of place holder/s "-->"  
         occurence_ends= [i.start() for i in re.finditer("-->",line)]
-#loop over number of start indices per line (as may be multiple placeholders per line)     
-        for i in range(len(occurence_starts)):
-#get whole place holder string  ,occurence_ends are the start indices of "-->" string so add 3
-          occurence_string=line[occurence_starts[i]:occurence_ends[i]+3]
-#if not in occurrence_strings array already append
-          if (occurence_string not in occurence_strings):
-            occurence_strings.append(occurence_string)
-#define new line        
-        new_line=line
-#for every unique place holder string replace placeholder with relevant r parameter(exception being Schema_table_prefix_modified as it is not a parameter)   
-        for occurence_string in occurence_strings:
-          parameter=occurence_string.split("<--specified_")[1].split("-->")[0]
-          if(parameter=="Schema_table_prefix"):
-            new_line=new_line.replace(occurence_string,r.Schema_table_prefix_modified)
-          else:
-            new_line=new_line.replace(occurence_string,r.params[parameter])
-#ok lets write the new modified line to our output file       
-        customised_file.write(new_line)
-#if no placeholder strings write original line to output file        
-      else:  customised_file.write(line)      
-
-# ```
-# App should now be an executable 
+    ## loop over number of start indices per line (as may be multiple placeholders per line)     
+    for i in range(len(occurence_starts)):
+                 ## get whole place holder string  ,occurence_ends are the start indices of "-->" string so add 3
+                 occurence_string=line[occurence_starts[i]:occurence_ends[i]+3]
+    ## if not in occurrence_strings array already append
+    if (occurence_string not in occurence_strings):
+        occurence_strings.append(occurence_string)
+    ## define new line        
+    new_line=line
+    ## for every unique place holder string replace placeholder with relevant r parameter(exception being Schema_table_prefix_modified as it is not a parameter)   
+    for occurence_string in occurence_strings:
+                                parameter=occurence_string.split("<--specified_")[1].split("-->")[0]
+    if(parameter=="Schema_table_prefix"):
+        new_line=new_line.replace(occurence_string,r.Schema_table_prefix_modified)
+    else:
+        new_line=new_line.replace(occurence_string,r.params[parameter])
+    ## ok lets write the new modified line to our output file       
+    customised_file.write(new_line)
+    ## if no placeholder strings write original line to output file        
+    else:  customised_file.write(line)      
+    
+    ##  ```
+    ##  App should now be an executable 
 }
 
 
