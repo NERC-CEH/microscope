@@ -732,7 +732,6 @@ save_otu_map <- function(OTU_name,  # Not sure what this is.
     colnames(dat)[3] = "OTU"
     dat <- dat[complete.cases(dat), ]
     attach(dat)
-
                                         #specify the coordinates for the file with otu
 
     ## could we expans this to:
@@ -740,10 +739,6 @@ save_otu_map <- function(OTU_name,  # Not sure what this is.
     sp::coordinates(dat) = ~eastings+northings
                                         #interpolate
 
-    ## What are we doing here?
-    ## Don't need to know, focus on whole code.
-    ## Can we split into a new called function?
-        
     spc.idw <- gstat::krige(OTU~1,dat,Grid)
     ukgrid = "+init=epsg:27700"
     spc.idw@proj4string <- sp::CRS(ukgrid)
@@ -777,36 +772,7 @@ save_otu_map <- function(OTU_name,  # Not sure what this is.
     ## so that it can be saved or transferred
     ser_mapandinfo = serialize(mapandinfo,connection=NULL,ascii=TRUE)
 
-    ## Need to convert to RSQLite.   Not sure how serialise affects this.  Hard to generate
-    ## in an interactive session as I don' fully understand it.
-
-####    This is the sqlite table creation code.  DUmping for reference as I
-####    figure out how to "INSERT" data    
-####
-####
-####    ## Create maps table
-####    ## blob was bytea
-####    sql_command_maps <- sprintf("create table otu_attributes_table (hit character varying (30), map_object blob, primary key ('hit'))")
-####
-####    ## Create table, maps
-####    maps_db <- dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
-####    DBI::dbExecute(conn = maps_db, statement = sql_command)
-####
-####    #Fill maps later
-####
-####    ## Fill table
-####    ## DBI::dbWriteTable(maps_db, "maps_table", maps_csv, append = TRUE, row.names = FALSE)
-####    ## Disconnect, best practise?
-####    DBI::dbDisconnect(maps_db)
-
     ## will fill maps table in step 3 using save_otu_map function
-
-
-    ## https://stackoverflow.com/questions/70285267/r-dbgetquery-insert-blob-data-with-other-text-data
-    ## NEED TO WRITE A DB EXECUTE AND INSERT COMMAND
-    
-    ## convert to a form postgres will accept
-    ## bytea_ser_mapandinfo <- RPostgreSQL::postgresqlEscapeBytea(ser_mapandinfo,con=Conn)
 
     sql_command_maps <- sprintf("insert into maps_table values (?, ?)")
     DBI::dbExecute(maps_db, sql_command_maps, list(OTU_name, ser_mapandinfo)
