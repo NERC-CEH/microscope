@@ -662,53 +662,45 @@ map_prep <- function(otu_table, ukcoast_poly, ukcoast_line)
 
 
 ### 3.2 Generate maps per OTU
-
-
+#'
+#' @description
+#' creates map object representing an individual
+#' OTUs/ ASVs geographical distribution
+#' 
+#' @details
 #' **save_otu_map** function  creates map object representing an individual
 #' OTUs/ ASVs geographical distribution this is saved to both the specified
 #' outputdir and database. Pngs of plotted map objects can also be saved to
 #' outdir for reference.
+#'
+#' @param OTU_name Not sure what this is.
+#' @param OTU_table filtered table
+#' @param Env_table Env_sub #created in map_prep
+#' @param Grid created in map_prep
+#' @param UK_poly uk.poly #created in map_prep
+#' @param UK_line uk.line #created in map_prep
+#' @param Conn SQLdb, removed so correct
+#' @param Schema_table_prefix removed for time being
+#' @param Output_dir # again, abandoned in favour of dir in string
+#' @param Make_png # flag
 
-#' Arguments
-
-#' * OTU_name- OTU/ASV name
-
-#' * OTU_table- colnames should be OTUs, rows should be samples, row/sample
-#' order should be consistent with Env_table
-
-#' * Env_table - table with environmental metadata including 'eastings' and
-#' 'northings',cols should be environmental variables, rows should be samples,
-#' row/sample order should be consistent with Env table
-
-#' * Grid- Spatial pixels object for interpolation
-
-#' * UK_poly- Spatial polygons dataframe
-#' * UK_line- Spatial lines dataframe
-#' * Eastings_col- Eastings column name within Env_table
-#' * Northings_col- Northings column name within Env_table
-#' * Conn- connection to postgres database
-#' *Schema_table_prefix - prefix of otu_attributes schema and maps table
-#' * Output_dir- Output directory for map objects
-#' * Make_png- TRUE/FALSE if true png will be generated of map as well as map object
-
-#' Example arguments for function testing
-#' OTU_name="ASV_1"
-#' OTU_table=OTU_tab_sub_occ_dec
-#' Env_table=Env_sub
-#' Grid=grd
-#' UK_poly=uk.poly
-#' UK_line=uk.line
-#' Conn=conn
-#' Schema_table_prefix=Schema_table_prefix_modified
-#' Output_dir=paste0(Output_dir_with_occ,"/Supplementary/Map_objects")
-#' Make_png=TRUE
-
-#' **r**
-#' ```{R maps function, eval=FALSE}
-
-##  What is this for??
-map_function <- function(){}
-
+#' @param otu_table filtered OTU table (created in step 1.2)
+#' @param ukcoast_poly shape file of uk polygon
+#' @param ukcoast_line shape file of uk outline
+#'
+#' @return None
+#'
+#' @examples
+#'
+#' map_prep(otu_table="/Supplementary/Tables_in_SQL/OTU_abund.csv"
+#'          ukcoast_poly=paste0(params$Map_objs_input_dir,"/ukcoast1.shp"),
+#'          ukcoast_line=paste0(params$Map_objs_input_dir,"/ukcoast_line.shp")
+#'         )
+#' 
+#' @note
+#' I think this might need merging with another function, can't remember
+#' which or why
+#'
 save_otu_map <- function(OTU_name,  # Not sure what this is.
                          OTU_table, # filtered table
                          Env_table, # Env_sub #created in map_prep
@@ -720,7 +712,7 @@ save_otu_map <- function(OTU_name,  # Not sure what this is.
                          Output_dir, # again, abandoned in favour of dir in string
                          Make_png # flag
                          ){
-
+    
     ## drop=FALSE protects against conversion to vector instead of dataframe
     ## OTU_name is column selection of some kind, need to find definition and
     ## reasoning
@@ -733,12 +725,12 @@ save_otu_map <- function(OTU_name,  # Not sure what this is.
     dat <- dat[complete.cases(dat), ]
     attach(dat)
                                         #specify the coordinates for the file with otu
-
+    
     ## could we expans this to:
     ## sp::coordinates(dat) = ~dat$eastings+dat$northings  as attach puts columns in namespace?
     sp::coordinates(dat) = ~eastings+northings
                                         #interpolate
-
+    
     spc.idw <- gstat::krige(OTU~1,dat,Grid)
     ukgrid = "+init=epsg:27700"
     spc.idw@proj4string <- sp::CRS(ukgrid)
@@ -761,52 +753,84 @@ save_otu_map <- function(OTU_name,  # Not sure what this is.
            )
                                         #save map object to outdir
     mapandinfo <- c(newmap,at)
-
+    
     save(mapandinfo, file=paste(Output_dir,"/",OTU_name,".RData",sep=""))
-
+    
                                         #Add object to database  
                                         #need to first get object into a form suitable for SQL
                                         #convert to stream of bytes
-
+    
     ## Serialise converts all pointers and links to objects into one object
     ## so that it can be saved or transferred
     ser_mapandinfo = serialize(mapandinfo,connection=NULL,ascii=TRUE)
-
+    
     ## will fill maps table in step 3 using save_otu_map function
-
+    
     sql_command_maps <- sprintf("insert into maps_table values (?, ?)")
     DBI::dbExecute(maps_db, sql_command_maps, list(OTU_name, ser_mapandinfo)
-    DBI::dbDisconnect(maps_db)                                                                      
-
-    if (Make_png==TRUE){ 
-        map_plot = sp::spplot(newmap["var1.pred"],
-                              at = at,
-                              sp.layout=list("sp.lines",UK_line,col="black",lwd=2)
-                              )
-
-        dir.create(paste0(Output_dir,"/png"),
-                   showWarnings = FALSE,
-                   recursive=TRUE)
-        
-        png(file=paste0(Output_dir,"/png/",OTU_name,"_plot.png"),
-            width=200, height=400)
-        print(map_plot)
-        dev.off()
+                   DBI::dbDisconnect(maps_db)                                                                      
+                   
+                   if (Make_png==TRUE){ 
+                       map_plot = sp::spplot(newmap["var1.pred"],
+                                             at = at,
+                                             sp.layout=list("sp.lines",UK_line,col="black",lwd=2)
+                                             )
+                       
+                       dir.create(paste0(Output_dir,"/png"),
+                                  showWarnings = FALSE,
+                                  recursive=TRUE)
+                       
+                       png(file=paste0(Output_dir,"/png/",OTU_name,"_plot.png"),
+                           width=200, height=400)
+                       print(map_plot)
+                       dev.off()
+                   }
     }
+    
 }
+    
+    
 
+### 3.2 Generate maps per OTU
+#'
+#' @description
+#' Using rparallel to parallelise -need to reauthenticate database on all cpus
+#' working on.
+#'
+#' @details
+#' Runs save_otu_map function on all OTUs.
+#' Using rparallel to parallelise -need to reauthenticate database on all cpus
+#' working on.
+#'
+#' @param OTU_name Not sure what this is.
+#' @param OTU_table filtered table
+#' @param Env_table Env_sub #created in map_prep
+#' @param Grid created in map_prep
+#' @param UK_poly uk.poly #created in map_prep
+#' @param UK_line uk.line #created in map_prep
+#' @param Conn SQLdb, removed so correct
+#' @param Schema_table_prefix removed for time being
+#' @param Output_dir # again, abandoned in favour of dir in string
+#' @param Make_png # flag
 
+#' @param otu_table filtered OTU table (created in step 1.2)
+#' @param ukcoast_poly shape file of uk polygon
+#' @param ukcoast_line shape file of uk outline
+#'
+#' @return None
+#'
+#' @examples
+#'
+#' map_prep(otu_table="/Supplementary/Tables_in_SQL/OTU_abund.csv"
+#'          ukcoast_poly=paste0(params$Map_objs_input_dir,"/ukcoast1.shp"),
+#'          ukcoast_line=paste0(params$Map_objs_input_dir,"/ukcoast_line.shp")
+#'         )
+#' 
+#' @note
+#' I think this might need merging with another function, can't remember
+#' which or why
+#'
 
-
-
-# step 3.2b
-                                        # ```
-# Run save_otu_map function on all OTUs.
-
-# Using rparallel to parallelise -need to reauthenticate database on all cpus working on.
-
-# **r**
-# ```{R maps parallelise, eval=FALSE}
 maps_parallelise <- function(){
                                         #create outdir for map objects
     dir.create(paste0(Output_dir_with_occ,"/Supplementary/Map_objects"), showWarnings = FALSE,recursive=TRUE)
@@ -835,11 +859,12 @@ maps_parallelise <- function(){
     parSapply(cl,colnames(OTU_tab_sub_occ_dec), function(x) save_otu_map(OTU_name=x,OTU_table=OTU_tab_sub_occ_dec,Env_table=Env_sub,Grid=grd,UK_poly=uk.poly,UK_line=uk.line,Conn=conn,Schema_table_prefix=Schema_table_prefix_modified,Output_dir=paste0(Output_dir_with_occ,"/Supplementary/Map_objects"),Make_png=FALSE))
     stopCluster(cl)
     
-                                        # ```
+    ## ```
 }
 
-## Step 3 Make Blast database
 
+
+## Step 3 Make Blast database
 ###  3.3 Filter fasta file to contain OTU sequences that meet occupancy filter
 
 ## Need to filter sequences prior to making blast DB otherwise we will have hits
