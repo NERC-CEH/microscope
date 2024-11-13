@@ -1,160 +1,65 @@
-# ---
-# title: "Generate taxonomic explorer app inputs"
-# author: "Briony Jones"
-# date: "07/12/2022"
-# output: 
-#   html_document:
-#     fig_caption: TRUE
-#     toc: TRUE
-#     toc_depth: 3
-#     toc_float:
-#       collapsed: FALSE
-#       smooth_scroll: TRUE 
-# params: 
-#   OTU_tab_file: "/raid3/scratch/MEGshared/Fungi_Explorer_App/Fungi_Explorer/Inputs/Data/basic_preprocessed/OTU_tab.csv"
-#   Tax_file: "/raid3/scratch/MEGshared/Fungi_Explorer_App/Fungi_Explorer/Inputs/Data/basic_preprocessed/Taxonomy.csv"
-#   Fasta_file: "/raid3/scratch/MEGshared/Fungi_Explorer_App/Fungi_Explorer/Inputs/fasta/recreated_fasta/CS_Fungi.fasta"
-#   Env_file: "/raid3/scratch/MEGshared/Fungi_Explorer_App/Fungi_Explorer/Inputs/Data/basic_preprocessed/Env.csv"
-#   App_template_input_dir: "/raid3/scratch/MEGshared/Fungi_Explorer_App/Blank_app_framework/Generic_inputs"
-#   Map_objs_input_dir : "/raid3/scratch/MEGshared/Fungi_Explorer_App/Fungi_Explorer/Inputs/UK_map_objs"
-#   Output_dir: "/raid3/scratch/MEGshared/Fungi_Explorer_App/Fungi_Explorer_unpublished_app_experiments/Outputs"  
-#   OTU_tab_occ_filter: 500
-#   SQL_database_name: "molecular"
-#   SQL_database_host: "connect-apps.ceh.ac.uk"
-#   Schema_table_prefix: "fungal" 
-#   Empty_database: FALSE
-#   Use_occupancy_in_schema_table_names: TRUE
-#   App_title: "Fungal Explorer"
-#   Example_sequence: "CTACCTGATCCGAGGTCAACCTTGGTGCCGCCGGAGCGGGCTTGAGGGGGGTTTAGAGGCCGGATAGCCCGCAGGCTCCCGATGCGAGGCAGATGTTACTACGCAAAGGAAGGGCCCAACGGGTCCGCCACTGGTTTTCGGGGACTGCCTGGGCAGATCCCCAACGCCGGGCCACGGGGGCTCGAGGGTTGAAACGACGCTCGGACAGGCATGCCTCCCAGGATAC"
-#   Info_text: "This is a useful description of my app"
-#   External_link: "https://www.ceh.ac.uk/"
-#   External_link_name: "More about UKCEH" 
-  
-# ---
-# **r**
-# ```{r setup, include=FALSE,eval=FALSE}
-# knitr::opts_chunk$set(echo = TRUE)
-# ```
+#' @title "Generate taxonomic explorer app inputs"
+#' @author "Briony Jones"
 
 
-## Summary
+#' @description
 ## Aim of script is to automate process of generating taxonomic explorer app linking marker gene sequences to environmental responses 
 ## (see ID-TaxER https://shiny-apps.ceh.ac.uk/ID-TaxER/ for example of similar existing app). Script directly adds to SQL database and generates blast database for app backend and modifies r shiny template file to produce front end. Preprocessed tables (otu/taxonomy etc) and map objects are also saved locally for reference. At the moment this script is suitable for UK data only as uses UK map outline objects to run, should be suitable for all CS molecular datasets (which was really my motivation for writing this). Due to complexity of script would recommend running code chunk by code chunk, rather than knitting it (atleast while it is still being tested). Apps for multiple taxonomic datasets can be generated using repeated runs of this script and added to the same database if they share the same environmental data.
 
-### Script Input requirements:
-# * OTU_tab_file should have OTU's/ASV's as column names and sample IDs as row
+
+#' @param OTU_tab_file should have OTU's/ASV's as column names and sample IDs as row
 #   names (row names must be able to be matched to Env file row names- but do
 #   not need to be in the same order)
 
-# * Tax_file with two columns one with OTU/ASV names and the other with
+#' @param Tax_file with two columns one with OTU/ASV names and the other with
 #   taxonomic classification delimited by ";" (OTUs/ASVs must be able to be
 #   matched to OTU_tab, but do not need to be in the same order)
 
-#* Fasta_file with OTU representative sequences/ ASV sequences corresponding to
+#' @param Fasta_file with OTU representative sequences/ ASV sequences corresponding to
 #  taxa in OTU_tab_file and Tax_file
 
-#* Env_file should contain the following column names
+#' @param Env_file should contain the following column names
 #  "avc_code","avc","pH","eastings","northings, row names should be sample ID's
 #  (these should be able to be matched to Env file but don't need to be in the
 #  same order)
 
-# * App_template_input_dir location of shiny app template 
+#' @param App_template_input_dir location of shiny app template 
 
-# * OTU_tab_occ_filter: The minimum amount of samples an OTU should occur in to be included in app
+#' @param OTU_tab_occ_filter: The minimum amount of samples an OTU should occur in to be included in app
 
-#* Map_objs_input_dir: Directory with input map objects files
+#' @param Map_objs_input_dir: Directory with input map objects files
 #  ''ukcoast_line.shp' and 'ukcoast1.shp'
 
-# * Output_dir: Directory for all outputs
+#' @param Output_dir: Directory for all outputs
 
-#* SQL_database_name: Name of database to input pre-processed tables and maps,
+#' @param SQL_database_name: Name of database to input pre-processed tables and maps,
 #  to be used as shiny app back end
 
-# * SQL_database_host: Database host address for data inputs
+#' @params SQL_database_host: Database host address for data inputs
 
-#* Schema_table_prefix: This string will be added to database schema and table
+#' @param Schema_table_prefix: This string will be added to database schema and table
 #  names (e.g could name after taxonomic kingdom if multiple taxonomic kingdoms
 #  sharing the same database)
 
-#* Empty_database: TRUE/FALSE, if database is empty all database schemas will be
+#' @param Empty_database: TRUE/FALSE, if database is empty all database schemas will be
 #  created; env table and uk mapping object will be added to the database
 #  alongside OTU related data. If FALSE It will be assumed the database already
 #  contains data for other taxonomic datasets and that the majority of schemas
 #  will already exist.will have already been created and env table and mapping
 #  object should already be exist in the database.
 
-#* Use_occupancy_in_schema_table_names: TRUE/FALSE, if TRUE will add occupancy
+#' @param Use_occupancy_in_schema_table_names: TRUE/FALSE, if TRUE will add occupancy
 #  into otu_attributes schema and into abund_tables table name, this is useful
 #  if initially trialing different occupancy filtering in app (although will
 #  likely want to go back and delete unnecessary schemas/ tables later).
 
-#* App_title: Title to appear on the app header (not linked to future web
+#' @param App_title: Title to appear on the app header (not linked to future web
 #  address)
 
-#* Example_sequence: Sequence to be used as an example sequence for users when
+#' @param Example_sequence: Sequence to be used as an example sequence for users when
 #  exploring the app
 
-# * Info_text: Text to feature on app describing purpose and function
-
-# * External_link: External link you would like app to feature
-
-# * External_link_name: Name to label external link
-
-#*NOTE*-Additionally SQL_USER and SQL_PWD should be set in global environment to
-#corresponding to the database username and password, have not included these as
-#parameters to avoid hard coding DB credentials. These will be needed both to
-#create the app and to subsequently run the app.
-
-
-### Main Script Outputs
-#All script outputs are stored either into `r params$Output_dir`/App or `r
-#params$Output_dir`/Supplementary sub folders depending on if they are needed
-#for the App to run or whether they are just saved for reference. Some outputs
-#are also saved directly to the `r params$SQL_database_name` database.
-
-#*Shiny front end file with ui and server code modified using rmarkdown
-#parameters
-
-#*Env file with just "avc_code","avc","pH" columns (these are the variables
-#which will be used by the app itself) stored in `r params$SQL_database_name`
-#database and saved to `r params$Output_dir`/Supplementary/Tables_in_SQL
-#subfolder for reference.
-
-#* Preprocessed OTU abundance table. Preprocessing includes removing samples
-#  with a read number <5000 and OTUs with an occupancy of < `r
-#  params$OTU_tab_occ_filter` as well as normalisation using decostands "total"
-#  method (relative abundance). Table stored in `r params$SQL_database_name` and
-#  saved to `r params$Output_dir`/Supplementary/Tables_in_SQL subfolder for
-#  reference. 
-
-#* Abundance_stats table with individual OTU abundance rank and occupancy
-#  percentage/rank for all taxa meeting occupancy filter >= `r
-#  params$OTU_tab_occ_filter`. Table stored in `r params$SQL_database_name` and
-#  saved to `r params$Output_dir`/Supplementary/Tables_in_SQL subfolder for
-#  reference.
-
-#* Taxonomy table,split into
-#  "kingdom","phylum","class","order","family","genus","species" fields. Table
-#  filtered to only include taxa with an occupancy of >= `r
-#  params$OTU_tab_occ_filter`. Table stored in `r params$SQL_database_name`
-#  database and saved to `r params$Output_dir`/Supplementary/Tables_in_SQL
-#  subfolder for reference.
-
-#* Map objects per OTU/ASV (meeting occupancy filter >= `r
-#  params$OTU_tab_occ_filter`) stored within `r params$SQL_database_name`
-#  database and also saved to `r params$Output_dir`/Supplementary/Map_objects
-#  subfolder for reference
-
-#* Blast database for all sequences within `r params$Fasta_file` (meeting
-#  occupancy filter >= `r params$OTU_tab_occ_filter`) saved to `r
-#  params$Output_dir`/App/Blast_DB
-
-## Step 0 initial setup
-
-# Load R libraries
-
-# **r**
-# ```{R load libraries, eval=FALSE}
+#' @param Info_text: Text to feature on app describing purpose and function
 library(data.table)
 library(vegan)
 library(maptools)
@@ -164,36 +69,6 @@ library(gstat)
 library(parallel)
 library(splitstackshape)
 library(RPostgreSQL)
-# ```
-
-
-# Tweak output dir depending on occurrence cut off used
-# Then pass this modified output dir to bash for command line steps
-
-# **r**
-# ```{R, eval=FALSE}
-#lets add subdir to Output_dir specifying occupancy filter used
-Output_dir_with_occ=paste0(params$Output_dir,"/occ_threshold_",params$OTU_tab_occ_filter)
-#need to use this variable in bash chunk.. one way to do this is to export to bash like so
-#https://github.com/yihui/knitr-examples/blob/master/061-bash-variable.md
-Sys.setenv(Output_dir_with_occ = Output_dir_with_occ)
-# ```
-
-# Connect to specified PostgreSQL DB through R using global variables for authentication
-
-# **r**
-
-
-# ```{R, eval=FALSE}
-drv=dbDriver("PostgreSQL")
-conn<- dbConnect(drv, 
-                 dbname = params$SQL_database_name,
-                 host = params$SQL_database_host, 
-                 port = '5432',
-                 user=Sys.getenv('SQL_USER'),
-                 password = Sys.getenv('SQL_PWD'))
-# ```
-
 
 ## Step 1 Prepare tables for database
 
