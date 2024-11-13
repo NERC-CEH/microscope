@@ -68,7 +68,8 @@ library(ggplot2)
 library(gstat)
 library(parallel)
 library(splitstackshape)
-library(RPostgreSQL)
+#library(RPostgreSQL)
+library(RSQLite)
 
 ## Step 1 Prepare tables for database
 
