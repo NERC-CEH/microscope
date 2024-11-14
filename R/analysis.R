@@ -100,8 +100,11 @@ library(RSQLite)
 #' - rearranges into a format SQL is happier with
 #' - Write new data to file
 #'
-#' @param input_file pre-processed intput file
-#' @param output_file name to use for the output file
+#' @param enviroment_data enviromental data file. should contain the following column names
+#'  "avc_code","avc","pH","eastings","northings, row names should be sample ID's
+#'  (these should be able to be matched to Env file but don't need to be in the
+#'  same order)
+#' @param filtered_env_data name to use for the outputed filtered env file
 #' 
 #' @return None
 #'
@@ -115,9 +118,9 @@ library(RSQLite)
 #' @note
 #' Original code provided output variable: Env_for_SQL
 
-clean_environmental_metadata <- function(input_file, output_file){
+clean_environmental_metadata <- function(enviroment_data,  filtered_env_data){
                                         #read in Env
-    Env=data.frame(fread(input_file),row.names=1,check.names=FALSE)
+    Env=data.frame(fread(enviroment_data),row.names=1,check.names=FALSE)
                                         # dont need eastings and northings saved in database
                                         # as map objects made generated in advance
     Env_for_SQL=Env[,c("avc_code","avc","pH")]
@@ -131,7 +134,7 @@ clean_environmental_metadata <- function(input_file, output_file){
                                         # https://deeplearning.lipingyang.org/2017/01/07/
                                         # postgresql-column-names-of-a-table-are-case-sensitive/
     Env_for_SQL=data.frame(sample=row.names(Env_for_SQL),Env_for_SQL[,1:2],ph=Env_for_SQL[,3])
-  write.csv(Env_for_SQL,output_file)
+  write.csv(Env_for_SQL, filtered_env_data)
 }
 
 ## Step 1.2
@@ -145,8 +148,9 @@ clean_environmental_metadata <- function(input_file, output_file){
 #' - Takes in Data from a raw OTU table
 #' - Filters based on occupancy level
 #'
-#' @param input_file pre-processed OTU table
-#' @param output_file name to use for the output file (filtered OTU table)
+#' @param OTU_file pre-processed OTU table
+#' @param filtered_OTU_file name to use for the output file (filtered OTU table)
+#' @param  OTU_table_occupancy_filter occupancy level to filter the table by
 #' 
 #' @return None
 #'
@@ -165,10 +169,10 @@ clean_environmental_metadata <- function(input_file, output_file){
 #' @note
 #' Original code provided output variable:  OTU_tab_sub_occ_dec
 
-clean_OTU_table <- function(input_file, output_file, OTU_table_occupancy_filter=30){
+clean_OTU_table <- function( OTU_file, filtered_OTU_file, OTU_table_occupancy_filter=30){
     
                                         #read in OTU_tab
-    OTU_tab=data.frame(fread(input_file),row.names=1,check.names=FALSE)
+    OTU_tab=data.frame(fread( OTU_file),row.names=1,check.names=FALSE)
                                         #remove samples from OTU tab with reads less than 5000
     OTU_tab_sub<-OTU_tab[rowSums(OTU_tab)>5000,]
                                         # Convert OTU_tab_sub to presence and absence in order to
@@ -184,7 +188,7 @@ clean_OTU_table <- function(input_file, output_file, OTU_table_occupancy_filter=
                                         #first make new subdir in our outdir(if doesnt already
                                         # exist) tO specify these are the tables that will be
                                         # stored in SQL 
-    write.csv(OTU_tab_sub_occ_dec,output_file)
+    write.csv(OTU_tab_sub_occ_dec,filtered_OTU_file)
 }
 
 ## Step 1.3
@@ -200,8 +204,8 @@ clean_OTU_table <- function(input_file, output_file, OTU_table_occupancy_filter=
 #' DB in step 2). In this code chunk saved to `r
 #' params$Output_dir`/Supplementary/Tables_in_SQL subfolder for reference.
 #'
-#' @param input_file filtered OTU table (created in step 1.2)
-#' @param output_file name to use for the output file, filtered abundace stats
+#' @param filtered_OTU_file filtered OTU table (created in step 1.2)
+#' @param abundance_stats_file name to use for the output file, filtered abundace stats
 #' 
 #' @return None
 #'
@@ -215,10 +219,10 @@ clean_OTU_table <- function(input_file, output_file, OTU_table_occupancy_filter=
 #' @note
 #' Original code provided output variable:  abundance_stats
 
-get_abundance_stats <- function(input_file, output_file){
+get_abundance_stats <- function(filtered_OTU_file, abundance_stats_file){
 
                                         # get the otu table
-    OTU_tab_sub_occ_dec = data.frame(fread(input_file),row.names=1,check.names=FALSE)
+    OTU_tab_sub_occ_dec = data.frame(fread(filtered_OTU_file),row.names=1,check.names=FALSE)
     
                                         #lets get OTUs total abundance across all remaining samples
     abundance_stats=data.frame(hit=colnames(OTU_tab_sub_occ_dec),abundance=colSums(OTU_tab_sub_occ_dec))
@@ -236,7 +240,7 @@ get_abundance_stats <- function(input_file, output_file){
     abundance_stats$occupancy_proportion=paste(round(abundance_stats$occupancy/nrow(OTU_tab_sub_occ_dec_pa)*100,2),"% (Rank: ",rank(-round(abundance_stats$occupancy/nrow(OTU_tab_sub_occ_dec_pa)*100,2),ties.method="min"),"/",ncol(OTU_tab_sub_occ_dec_pa),")",sep="")
                                         #remove unnecessary columns
     abundance_stats=abundance_stats[,-c(2,4)]
-    write.csv(abundance_stats,output_file,row.names=FALSE)
+    write.csv(abundance_stats,abundance_stats_file,row.names=FALSE)
 }
 
 ## Step 1.4
@@ -250,13 +254,9 @@ get_abundance_stats <- function(input_file, output_file){
 #' that meet occupancy threshold ,save to `r params$Output_dir`/Supplementary/Tables_in_SQL
 #' subfolder for reference.
 #'
-#'
-#' @param input_file filtered OTU table (created in step 1.2
-#' @param output_file name to use for the output file, filtered abundace stats
-#'
 #' @param OTU_abund_filter_file filtered OTU table created in step 1.2 for input
-#' @param input_file pre-processed taxonomy table to use as input
-#' @param output_file name for output file, which is a filtered taxonomy table
+#' @param taxononmy_file pre-processed taxonomy table to use as input
+#' @param filtered_taxonomy_file name for output file, which is a filtered taxonomy table
 #' 
 #' @return None
 #'
@@ -265,17 +265,17 @@ get_abundance_stats <- function(input_file, output_file){
 #'
 #' prepair_taxonomy_table(
 #'     OTU_abund_filter_file = paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/OTU_abund.csv",
-#'     input_file = params$Tax_file # basic_preprocessed/Taxonomy.csv,
-#'     output_file = paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/Taxonomy.csv")
+#'     taxonomy_file = params$Tax_file # basic_preprocessed/Taxonomy.csv,
+#'     filtered_taxonomy_file = paste0(Output_dir_with_occ,"/Supplementary/Tables_in_SQL/Taxonomy.csv")
 #' )
 #'
 #' @note
 #' Original code provided output variable:
 #' Taxonomy_filt (Taxonomy_Sort is now written as extra steps were needed.)
 #' 
-prepair_taxonomy_table <- function(input_file, output_file, OTU_abund_filter_file){
+prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_abund_filter_file){
     
-    Taxonomy <- read.csv(input_file)
+    Taxonomy <- read.csv(taxonomy_file)
                                         # data is two columns (OTU and taxa).
                                         # Split into multiple taxonomy columns (taxonomy_1, etc)
     Taxonomy<-as.data.frame(cSplit(indt=Taxonomy,splitCols=2,sep=";"))
@@ -301,7 +301,7 @@ prepair_taxonomy_table <- function(input_file, output_file, OTU_abund_filter_fil
     Taxonomy_Sort$Genus <- sub(".*__", "", Taxonomy_Sort$Genus)
     Taxonomy_Sort$Species <- sub(".*__", "", Taxonomy_Sort$Species)
     Taxonomy_Sort[is.na(Taxonomy_Sort)] <- ""
-    write.csv(Taxonomy_Sort,output_file)
+    write.csv(Taxonomy_Sort,filtered_taxonomy_file)
 }
 
 
