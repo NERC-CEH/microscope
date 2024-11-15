@@ -1,10 +1,20 @@
-#' @title "Generate taxonomic explorer app inputs"
+#' Microscope
+#'
+#' Generate taxonomic explorer app inputs
+#'
+#' 
 #' @author "Briony Jones"
+#' 
+#' @import data.table
+#' @import vegan
+#' @import terra
+#' @import ggplot2
+#' @import gstat
+#' @import parallel
+#' @import splitstackshape
+#' @import RSQLite
 
-
-#' @description
-## Aim of script is to automate process of generating taxonomic explorer app linking marker gene sequences to environmental responses 
-## (see ID-TaxER https://shiny-apps.ceh.ac.uk/ID-TaxER/ for example of similar existing app). Script directly adds to SQL database and generates blast database for app backend and modifies r shiny template file to produce front end. Preprocessed tables (otu/taxonomy etc) and map objects are also saved locally for reference. At the moment this script is suitable for UK data only as uses UK map outline objects to run, should be suitable for all CS molecular datasets (which was really my motivation for writing this). Due to complexity of script would recommend running code chunk by code chunk, rather than knitting it (atleast while it is still being tested). Apps for multiple taxonomic datasets can be generated using repeated runs of this script and added to the same database if they share the same environmental data.
+#' @description Aim of script is to automate process of generating taxonomic explorer app linking marker gene sequences to environmental responses (see ID-TaxER https://shiny-apps.ceh.ac.uk/ID-TaxER/ for example of similar existing app). Script directly adds to SQL database and generates blast database for app backend and modifies r shiny template file to produce front end. Preprocessed tables (otu/taxonomy etc) and map objects are also saved locally for reference. At the moment this script is suitable for UK data only as uses UK map outline objects to run, should be suitable for all CS molecular datasets (which was really my motivation for writing this). Due to complexity of script would recommend running code chunk by code chunk, rather than knitting it (atleast while it is still being tested). Apps for multiple taxonomic datasets can be generated using repeated runs of this script and added to the same database if they share the same environmental data.
 
 
 #' @param OTU_tab_file should have OTU's/ASV's as column names and sample IDs as row
@@ -35,7 +45,7 @@
 #' @param SQL_database_name: Name of database to input pre-processed tables and maps,
 #  to be used as shiny app back end
 
-#' @params SQL_database_host: Database host address for data inputs
+#' @param SQL_database_host: Database host address for data inputs
 
 #' @param Schema_table_prefix: This string will be added to database schema and table
 #  names (e.g could name after taxonomic kingdom if multiple taxonomic kingdoms
@@ -60,16 +70,6 @@
 #  exploring the app
 
 #' @param Info_text: Text to feature on app describing purpose and function
-library(data.table)
-library(vegan)
-library(maptools)
-library(rgdal)
-library(ggplot2)
-library(gstat)
-library(parallel)
-library(splitstackshape)
-#library(RPostgreSQL)
-library(RSQLite)
 
 ## Step 1 Prepare tables for database
 
@@ -198,11 +198,10 @@ clean_OTU_table <- function( OTU_file, filtered_OTU_file, OTU_table_occupancy_fi
 #' Prepare abundance_stats table
 #' 
 #' @details
-#'
-#' #Get individual OTU stats to summarise abundance (rank) and occupancy
+#' Get individual OTU stats to summarise abundance (rank) and occupancy
 #' (percentage and rank), these stats will form a table in the database (added to
-#' DB in step 2). In this code chunk saved to `r
-#' params$Output_dir`/Supplementary/Tables_in_SQL subfolder for reference.
+#' DB in step 2). In this code chunk saved to r
+#' params$Output_dir /Supplementary/Tables_in_SQL subfolder for reference.
 #'
 #' @param filtered_OTU_file filtered OTU table (created in step 1.2)
 #' @param abundance_stats_file name to use for the output file, filtered abundace stats
@@ -251,7 +250,7 @@ get_abundance_stats <- function(filtered_OTU_file, abundance_stats_file){
 #' 
 #' @details
 #' Read in taxonomy, split taxonomic fields by ";"and subset to only include OTUs
-#' that meet occupancy threshold ,save to `r params$Output_dir`/Supplementary/Tables_in_SQL
+#' that meet occupancy threshold ,save to r params$Output_dir/Supplementary/Tables_in_SQL
 #' subfolder for reference.
 #'
 #' @param OTU_abund_filter_file filtered OTU table created in step 1.2 for input
@@ -475,8 +474,8 @@ format_otu_for_Rsqlite <- function(abundance_csv, taxonomy_csv, otu_csv){
 #' parts and leave this until later. Perhaps it would be better to move to SQLite????
 #' Perhaps some of the functions to setup, like grid bit
 #'
-map_prep <- function(otu_table, ukcoast_poly, ukcoast_line)
-
+map_prep <- function(otu_table, ukcoast_poly, ukcoast_line){
+    
                                         #read in OTU_tab
     OTU_table = data.frame(fread(otu_table),
                            row.names=1,
@@ -488,9 +487,11 @@ map_prep <- function(otu_table, ukcoast_poly, ukcoast_line)
     identical(row.names(Env_sub),row.names(OTU_table))
                                         # read in some shapefiles (georeferenced maps of uk)
                                         # uk polygon
-    uk.poly <- rgdal::readOGR(ukcoast_poly)                                    )
+    ##    uk.poly <- rgdal::readOGR(ukcoast_poly)
+    uk.poly <- terra::vect(ukcoast_poly)
                                         # outline of uk
-    uk.line <- rgdal::readOGR(ukcoast_line)
+    ##    uk.line <- rgdal::readOGR(ukcoast_line)
+    uk.line <- terra::vect(ukcoast_line)
 
                                         # British National Grid System is square for UK.
                                         # Need to project maps long-lat onto this as
@@ -538,7 +539,8 @@ map_prep <- function(otu_table, ukcoast_poly, ukcoast_line)
 
 
 ### 3.2 Generate maps per OTU
-#'
+#' Generate maps per OTU
+#' 
 #' @description
 #' creates map object representing an individual
 #' OTUs/ ASVs geographical distribution
@@ -557,9 +559,8 @@ map_prep <- function(otu_table, ukcoast_poly, ukcoast_line)
 #' @param UK_line uk.line #created in map_prep
 #' @param Conn SQLdb, removed so correct
 #' @param Schema_table_prefix removed for time being
-#' @param Output_dir # again, abandoned in favour of dir in string
-#' @param Make_png # flag
-
+#' @param Output_dir not used #abandoned in favour of dir in string
+#' @param Make_png flag
 #' @param otu_table filtered OTU table (created in step 1.2)
 #' @param ukcoast_poly shape file of uk polygon
 #' @param ukcoast_line shape file of uk outline
@@ -593,7 +594,7 @@ save_otu_map <- function(OTU_name,  # Not sure what this is.
     ## OTU_name is column selection of some kind, need to find definition and
     ## reasoning
     otu_abund <- OTU_table[,OTU_name,drop=FALSE]
-
+    
                                         #make dataframe with eastings and northings
                                         # binds to otu_abund as well?
     dat <- cbind(Env_table[,c('eastings','northings')],otu_abund)
@@ -643,9 +644,9 @@ save_otu_map <- function(OTU_name,  # Not sure what this is.
     ## will fill maps table in step 3 using save_otu_map function
     
     sql_command_maps <- sprintf("insert into maps_table values (?, ?)")
-    DBI::dbExecute(maps_db, sql_command_maps, list(OTU_name, ser_mapandinfo)
-                   DBI::dbDisconnect(maps_db)                                                                      
-                   
+    DBI::dbExecute(maps_db, sql_command_maps, list(OTU_name, ser_mapandinfo))
+    DBI::dbDisconnect(maps_db)
+    
                    if (Make_png==TRUE){ 
                        map_plot = sp::spplot(newmap["var1.pred"],
                                              at = at,
@@ -661,14 +662,14 @@ save_otu_map <- function(OTU_name,  # Not sure what this is.
                        print(map_plot)
                        dev.off()
                    }
-    }
-    
 }
+    
     
     
 
 ### 3.2 Generate maps per OTU
-#'
+#' Generate maps per OTU
+#' 
 #' @description
 #' Using rparallel to parallelise -need to reauthenticate database on all cpus
 #' working on.
@@ -686,8 +687,8 @@ save_otu_map <- function(OTU_name,  # Not sure what this is.
 #' @param UK_line uk.line #created in map_prep
 #' @param Conn SQLdb, removed so correct
 #' @param Schema_table_prefix removed for time being
-#' @param Output_dir # again, abandoned in favour of dir in string
-#' @param Make_png # flag
+#' @param Output_dir Not used # again, abandoned in favour of dir in string
+#' @param Make_png flag
 
 #' @param otu_table filtered OTU table (created in step 1.2)
 #' @param ukcoast_poly shape file of uk polygon
@@ -706,7 +707,6 @@ save_otu_map <- function(OTU_name,  # Not sure what this is.
 #' I think this might need merging with another function, can't remember
 #' which or why
 #'
-
 maps_parallelise <- function(){
                                         #create outdir for map objects
     dir.create(paste0(Output_dir_with_occ,"/Supplementary/Map_objects"), showWarnings = FALSE,recursive=TRUE)
@@ -749,84 +749,84 @@ maps_parallelise <- function(){
 ## Doing this using biopython.
 
 
-make_blast_py <- function(){
-    ## **python**
+# make_blast_py <- function(){
+#    ## **python**
     ## ```{python filter fasta file, eval=FALSE}
-    from Bio import SeqIO
-    import os
+#    from Bio import SeqIO
+#    import os
     ## get OTUs we want to keep from OTU table
     ## python can access r variables within markdown and converts our r dataframe into a dictionary- the keys are the OTU names
-    OTU_tab_dict = r.OTU_tab_sub_occ_dec
+#    OTU_tab_dict = r.OTU_tab_sub_occ_dec
     ## make output dir for filtered fasta
-    if not os.path.exists(r.Output_dir_with_occ+"/Supplementary/Filtered_sequences"):
-               os.makedirs(r.Output_dir_with_occ+"/Supplementary/Filtered_sequences")
+#    if not os.path.exists(r.Output_dir_with_occ+"/Supplementary/Filtered_sequences"):
+#               os.makedirs(r.Output_dir_with_occ+"/Supplementary/Filtered_sequences")
     ## only keep records in filtered otu tab (dictionary keys) 
     ## see http://biopython.org/DIST/docs/tutorial/Tutorial.html#sec372 for reference
-    records = (record for record in SeqIO.parse(r.params["Fasta_file"],"fasta") if record.id in OTU_tab_dict.keys())
-    SeqIO.write(records, r.Output_dir_with_occ+"/Supplementary/Filtered_sequences/filtered_sequences.fasta", "fasta")
+#    records = (record for record in SeqIO.parse(r.params["Fasta_file"],"fasta") if record.id in OTU_tab_dict.keys())
+#    SeqIO.write(records, r.Output_dir_with_occ+"/Supplementary/Filtered_sequences/filtered_sequences.fasta", "fasta")
     ## ```
-}
+#}
 
 ###  3.4 Make blast database
 # Take filtered fasta and make blast database for back end of shiny app
 
-make_blast_bash <- function(){
+#make_blast_bash <- function(){
     ## **Bash:**
     ## ```{bash BlastDB, eval=FALSE}
     ## cmake makes dir and any parent dirs necessary
-    cmake -E make_directory $Output_dir_with_occ/App/Blast_DB
-    makeblastdb -in $Output_dir_with_occ/Supplementary/Filtered_sequences/filtered_sequences.fasta -dbtype nucl -out $Output_dir_with_occ/App/Blast_DB/Blast_DB
+#    cmake -E make_directory $Output_dir_with_occ/App/Blast_DB
+#    makeblastdb -in $Output_dir_with_occ/Supplementary/Filtered_sequences/filtered_sequences.fasta -dbtype nucl -out $Output_dir_with_occ/App/Blast_DB/Blast_DB
     ## ```
-}
+#}
 
 
 
 
-create_app_python <-function(){
-#### 4 Create app front-end from template
+## create_app_python <-function(){
+## #### 4 Create app front-end from template
     
-    ## Using python to edit r code - find python easiest option for file handling
+##     ## Using python to edit r code - find python easiest option for file handling
     
-    ## **Python:**
-    ## ```{python create app, eval=FALSE}
-    import re
-    ## get blank template path using R App_template parameter  
-    blank_template=r.params["App_template_input_dir"]+"/Blank_taxonomic_explorer_app_with_functional_place_holders.R"
-    ## open blank_template
-    with open(blank_template,'r') as blank_template_file:
-                                         ## open output file  
-                                         with open(r.Output_dir_with_occ+"/App/App.R",'w') as customised_file:
-### loop over lines 
-    for line in blank_template_file:
-                    ## empty array for any placeholder strings that need to be replaced within that line 
-                    occurence_strings=[]
-    ## get all indices where placeholder  starts("<--")
-    occurence_starts= [i.start() for i in re.finditer("<--",line)]
-    ## if there are any beginnings of placeholders in the line  continue   
-    if (len(occurence_starts)!=0):
-        ## get all indices  of the end of place holder/s "-->"  
-        occurence_ends= [i.start() for i in re.finditer("-->",line)]
-    ## loop over number of start indices per line (as may be multiple placeholders per line)     
-    for i in range(len(occurence_starts)):
-                 ## get whole place holder string  ,occurence_ends are the start indices of "-->" string so add 3
-                 occurence_string=line[occurence_starts[i]:occurence_ends[i]+3]
-    ## if not in occurrence_strings array already append
-    if (occurence_string not in occurence_strings):
-        occurence_strings.append(occurence_string)
-    ## define new line        
-    new_line=line
-    ## for every unique place holder string replace placeholder with relevant r parameter(exception being Schema_table_prefix_modified as it is not a parameter)   
-    for occurence_string in occurence_strings:
-                                parameter=occurence_string.split("<--specified_")[1].split("-->")[0]
-    if(parameter=="Schema_table_prefix"):
-        new_line=new_line.replace(occurence_string,r.Schema_table_prefix_modified)
-    else:
-        new_line=new_line.replace(occurence_string,r.params[parameter])
-    ## ok lets write the new modified line to our output file       
-    customised_file.write(new_line)
-    ## if no placeholder strings write original line to output file        
-    else:  customised_file.write(line)      
+##     ## **Python:**
+##     ## ```{python create app, eval=FALSE}
+##     import re
+##     ## get blank template path using R App_template parameter  
+##     blank_template=r.params["App_template_input_dir"]+"/Blank_taxonomic_explorer_app_with_functional_place_holders.R"
+##     ## open blank_template
+##     with open(blank_template,'r') as blank_template_file:
+##                                          ## open output file  
+##                                          with open(r.Output_dir_with_occ+"/App/App.R",'w') as customised_file:
+## ### loop over lines 
+##     for line in blank_template_file:
+##                     ## empty array for any placeholder strings that need to be replaced within that line 
+##                     occurence_strings=[]
+##     ## get all indices where placeholder  starts("<--")
+##     occurence_starts= [i.start() for i in re.finditer("<--",line)]
+##     ## if there are any beginnings of placeholders in the line  continue   
+##     if (len(occurence_starts)!=0):
+##         ## get all indices  of the end of place holder/s "-->"  
+##         occurence_ends= [i.start() for i in re.finditer("-->",line)]
+##     ## loop over number of start indices per line (as may be multiple placeholders per line)     
+##     for i in range(len(occurence_starts)):
+##                  ## get whole place holder string  ,occurence_ends are the start indices of "-->" string so add 3
+##                  occurence_string=line[occurence_starts[i]:occurence_ends[i]+3]
+##     ## if not in occurrence_strings array already append
+##     if (occurence_string not in occurence_strings):
+##         occurence_strings.append(occurence_string)
+##     ## define new line        
+##     new_line=line
+##     ## for every unique place holder string replace placeholder with relevant r parameter(exception being Schema_table_prefix_modified as it is not a parameter)   
+##     for occurence_string in occurence_strings:
+##                                 parameter=occurence_string.split("<--specified_")[1].split("-->")[0]
+##     if(parameter=="Schema_table_prefix"):
+##         new_line=new_line.replace(occurence_string,r.Schema_table_prefix_modified)
+##     else:
+##         new_line=new_line.replace(occurence_string,r.params[parameter])
+##     ## ok lets write the new modified line to our output file       
+##     customised_file.write(new_line)
+##     ## if no placeholder strings write original line to output file        
+##     else:  customised_file.write(line)      
     
-    ##  ```
-    ##  App should now be an executable 
-}
+##     ##  ```
+##     ##  App should now be an executable 
+## }
