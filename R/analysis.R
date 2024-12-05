@@ -353,7 +353,12 @@ prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_ab
 #' 
 #' 
 #' @export
-format_otu_for_Rsqlite <- function(abundance_csv, taxonomy_csv, otu_csv){
+format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv){
+
+    abundance_csv <- read.csv(filtered_abundance_csv)
+    taxonomy_csv <- read.csv(filtered_taxonomy_csv)
+    otu_csv <- read.csv(filtered_otu_csv)
+    
     ## Lets try not splitting to begin with
     ## Current SQL command is:
     ## CREATE TABLE IF NOT EXISTS abund_tables.<prefix>_abund_2(hit character varying(30), "<column names each followed by '" numeric, "'>" numeric, CONSTRAINT '<prefix>_abund_2_pkey PRIMARY KEY("hit"))'
