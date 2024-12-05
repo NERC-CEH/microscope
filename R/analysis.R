@@ -371,8 +371,8 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     ## Fails with "CONSTRAINT", not sure on need, so removing.
 
 
-    sql_command <- sprintf("create table if not exists abund_table (hit character varying(30), %s numeric, primary key ('hit'))",
-                                     paste(colnames(abundance_csv), collapse=' numeric, ')   #colnames
+    sql_command <- sprintf("create table if not exists abund_table (hit character varying(30), %s numeric, primary key (hit))",
+                                     paste(colnames(abundance_csv)[-1], collapse=' numeric, ')   #colnames
                            )
 
     ## Create table, abundance
@@ -389,8 +389,8 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     ## "order" is an SQL command so need to escape it in quotes, easier to escape all
     ## fields in quotes
     
-    sql_command_taxonomy <- sprintf("create table taxonomy_table (hit character varying (30), %s character varying (250), primary key ('hit'))",
-                                    paste('"',colnames(abundance_csv),'"',
+    sql_command_taxonomy <- sprintf("create table taxonomy_table (hit character varying (30), %s character varying (250), primary key (hit))",
+                                    paste('"',colnames(abundance_csv)[-1],'"',
                                           collapse=' charater varying(250),',
                                           sep='')
                                     )
@@ -406,8 +406,8 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
 
     ## Create OTU table
 
-    sql_command_otu <- sprintf("create table otu_table (hit character varying (30), %s character varying (30), primary key ('hit'))",
-                                    paste('"',colnames(otu_csv),'"',
+    sql_command_otu <- sprintf("create table otu_table (hit character varying (30), %s character varying (30), primary key (hit))",
+                                    paste('"',colnames(otu_csv)[-1],'"',
                                           collapse=' charater varying(250),',
                                           sep='')
                                     )
@@ -425,7 +425,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     ## Postgresql use bytea as the data type, but sqlite does not have this
     ## equvilant is "blob" so changing bytea to blob for this.
     ## https://jfaganuk.github.io/2015/01/12/storing-r-objects-in-sqlite-tables/
-    sql_command_maps <- sprintf("create table otu_attributes_table (hit character varying (30), map_object blob, primary key ('hit'))")
+    sql_command_maps <- sprintf("create table otu_attributes_table (hit character varying (30), map_object blob, primary key (hit))")
 
     ## Create table, maps
     maps_db <- DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
