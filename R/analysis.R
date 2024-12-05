@@ -355,6 +355,8 @@ prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_ab
 #' @export
 format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv){
 
+    print("Debug: Load files")
+    
     abundance_csv <- read.csv(filtered_abundance_csv)
     taxonomy_csv <- read.csv(filtered_taxonomy_csv)
     otu_csv <- read.csv(filtered_otu_csv)
@@ -367,13 +369,14 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
 
     ## Lets use sprintf to get better formatting of the string.
     ## Fails with "CONSTRAINT", not sure on need, so removing.
-    
+
+
     sql_command <- sprintf("create table if not exists abund_table (hit character varying(30), %s numeric, primary key ('hit'))",
                                      paste(colnames(abundance_csv), collapse=' numeric, ')   #colnames
                            )
 
     ## Create table, abundance
-    abundance_db <- dbConnect(RSQLite::SQLite(), "abundance_db.sqlite")
+    abundance_db <- DBI::dbConnect(RSQLite::SQLite(), "abundance_db.sqlite")
     DBI::dbExecute(conn = abundance_db, statement = sql_command)
     ## Fill table
     DBI::dbWriteTable(abundance_db, "abund_table", abundance_csv, append = TRUE, row.names = FALSE)
@@ -393,7 +396,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
                                     )
 
     ## Create table, taxonomy
-    taxonomy_db <- dbConnect(RSQLite::SQLite(), "taxonomy_db.sqlite")
+    taxonomy_db <- DBI::dbConnect(RSQLite::SQLite(), "taxonomy_db.sqlite")
     DBI::dbExecute(conn = taxonomy_db, statement = sql_command)
     ## Fill table
     DBI::dbWriteTable(taxonomy_db, "taxonomy_table", taxonomy_csv, append = TRUE, row.names = FALSE)
@@ -410,7 +413,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
                                     )
 
     ## Create table, otu
-    otu_db <- dbConnect(RSQLite::SQLite(), "otu_db.sqlite")
+    otu_db <- DBI::dbConnect(RSQLite::SQLite(), "otu_db.sqlite")
     DBI::dbExecute(conn = otu_db, statement = sql_command)
     ## Fill table
     DBI::dbWriteTable(otu_db, "otu_table", otu_csv, append = TRUE, row.names = FALSE)
@@ -425,7 +428,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     sql_command_maps <- sprintf("create table otu_attributes_table (hit character varying (30), map_object blob, primary key ('hit'))")
 
     ## Create table, maps
-    maps_db <- dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
+    maps_db <- DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
     DBI::dbExecute(conn = maps_db, statement = sql_command)
 
     #Fill maps later
