@@ -404,8 +404,13 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     DBI::dbDisconnect(taxonomy_db)
 
 
-    ## Create OTU table
 
+    ## OTU table has too many columns for SQL/SQLite so need to transpose
+    transpose_otu_csv = t(otu_csv)
+    ## convert back to a data.frame
+    otu_csv = data.frame(hit=row.names(transpose_otu_csv), transpose_otu_csv, check.names=FALSE)
+
+    ## Create OTU table
     sql_command_otu <- sprintf("create table otu_table (hit character varying (30), %s character varying (30), primary key (hit))",
                                     paste('"',colnames(otu_csv)[-1],'"',
                                           collapse=' charater varying(250),',
