@@ -434,7 +434,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
 
     ## Create table, maps
     maps_db <- DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
-    DBI::dbExecute(conn = maps_db, statement = sql_command)
+    DBI::dbExecute(conn = maps_db, statement = sql_command_maps)
 
     #Fill maps later
 
@@ -470,20 +470,25 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
 #' @param otu_table filtered OTU table (created in step 1.2)
 #' @param ukcoast_poly shape file of uk polygon
 #' @param ukcoast_line shape file of uk outline
+#' @param enviroment_data enviromental data file. should contain the following column names
+#'  "avc_code","avc","pH","eastings","northings, row names should be sample ID's
+#'  (these should be able to be matched to Env file but don't need to be in the
+#'  same order)
 #'
 #' @return None
 #'
 #' @examples
 #' # Prepare map
 #' #map_prep(
-#' #  otu_table = "/Supplementary/Tables_in_SQL/OTU_abund.csv",
+#' #  otu_table = "supplementary/Tables_in_SQL/OTU_abund.csv",
+#' #  enviroment_data='country_side_survey/CS2007_Env_pH_AVC.csv'
 #' #  ukcoast_poly = 'ukcoast1.shp',
 #' #  ukcoast_line = 'ukcoast_line.shp'
 #' #)
 #' 
 #' @note
 #'
-#' Running this as separate function, btu perhaps this should be the start of another function?
+#' Running this as separate function, but perhaps this should be the start of another function?
 #' 
 #' abund_table is called by env name: OTU_tab_sub_occ_dec
 #' looks like this sets up a series of functions and variables to be used in a latter step
@@ -492,15 +497,22 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
 #' Perhaps some of the functions to setup, like grid bit
 #'
 #' @export
-map_prep <- function(otu_table, ukcoast_poly, ukcoast_line){
+map_prep <- function(otu_table, enviroment_data, ukcoast_poly, ukcoast_line){
     
                                         #read in OTU_tab
     OTU_table = data.frame(fread(otu_table),
                            row.names=1,
                            check.names=FALSE)
 
+                                        #read in enviromental data
+    env_data = data.frame(fread(enviroment_data),
+                           row.names=1,
+                           check.names=FALSE)
                                         # first lets get env in the same order as otu table
-    Env_sub = Env[row.names(OTU_table),]
+
+                                        # Env is Env.csv file read in as a dataframe which is csv
+    
+    Env_sub = env_data[row.names(OTU_table),]
                                         # Isnt this just a "test" so does nothing?
     identical(row.names(Env_sub),row.names(OTU_table))
                                         # read in some shapefiles (georeferenced maps of uk)
