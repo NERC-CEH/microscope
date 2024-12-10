@@ -430,7 +430,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     ## Postgresql use bytea as the data type, but sqlite does not have this
     ## equvilant is "blob" so changing bytea to blob for this.
     ## https://jfaganuk.github.io/2015/01/12/storing-r-objects-in-sqlite-tables/
-    sql_command_maps <- sprintf("create table otu_attributes_table (hit character varying (30), map_object blob, primary key (hit))")
+    sql_command_maps <- sprintf("create table otu_attributes_table (otu_name character varying (30), map_object blob, primary key (otu_name))")
 
     ## Create table, maps
     maps_db <- DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
@@ -695,7 +695,7 @@ save_otu_map <- function(OTU_name,  # Not sure what this is.
     ## will fill maps table in step 3 using save_otu_map function
     
     sql_command_maps <- sprintf("insert into maps_table values (?, ?)")
-    DBI::dbExecute(maps_db, sql_command_maps, list(OTU_name, ser_mapandinfo))
+    DBI::dbExecute(maps_db, sql_command_maps, params = list(OTU_name, ser_mapandinfo))
     DBI::dbDisconnect(maps_db)
     
                    if (Make_png==TRUE){ 
