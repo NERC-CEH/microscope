@@ -62,6 +62,49 @@
 #' #@param Info_text: Text to feature on app describing purpose and function
 #'
 
+
+#' Step 0.1
+#' Merge AVC with location from CountrySide survery.
+#'
+#' @description
+#' Merge AVC with location from CountrySide survery.
+#' 
+#' @details
+#' Filters out rows (OTU) by occupancy level
+#' - Takes in Data from a raw OTU table
+#' - Filters based on occupancy level
+#'
+#' @param AVC_data name of input file with AVC and PH data
+#' @param CS_location_data name of input file to use for Countryside survey location data
+#' @param CS_AVC_combined name of output file with combined data
+#' 
+#' @return None
+#' @examples
+#'
+#' @note
+#' This used the 10km areas from country side survey
+#' 
+#' @export
+merge_AVC_location_data <- function( AVC_data, CS_location_data, CS_AVC_combined){
+
+    cs_avc = data.frame(fread(AVC_data,),row.names=1,check.names=FALSE)
+    cs_location = data.frame(fread(CS_location_data,),row.names=1,check.names=FALSE)
+
+    ## Need to tunr rownames into a column
+    cs_avc$row_names <- rownames(cs_avc)
+    cs_location$row_names <- rownames(cs_location)
+
+    cs_avc_with_location <- merge(cs_avc, cs_location, by = 'row_names')
+
+    ## convert the column "row_names" to row names and delete the column
+    rownames(cs_avc_with_location) <- cs_avc_with_location$row_names
+    cs_avc_with_location$row_names <- NULL
+    
+    write.csv(cs_avc_with_location)
+}
+
+
+
 ## Step 1 Prepare tables for database
 
 ### Prepare  OTU tab and Env 
