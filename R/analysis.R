@@ -102,7 +102,7 @@ merge_AVC_location_data <- function( AVC_data, CS_location_data, CS_AVC_combined
     rownames(cs_avc_with_location) <- cs_avc_with_location$row_names
     cs_avc_with_location$row_names <- NULL
     
-    write.csv(cs_avc_with_location)
+    write.csv(cs_avc_with_location, CS_AVC_combined)
 }
 
 
