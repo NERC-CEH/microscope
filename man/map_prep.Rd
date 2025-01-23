@@ -4,14 +4,19 @@
 \alias{map_prep}
 \title{Put the filtered OTU, taxonomy, and abundance files into RSQLite files}
 \usage{
-map_prep(otu_table, ukcoast_poly, ukcoast_line)
+map_prep(ukcoast_poly, ukcoast_line)
 }
 \arguments{
-\item{otu_table}{filtered OTU table (created in step 1.2)}
-
 \item{ukcoast_poly}{shape file of uk polygon}
 
 \item{ukcoast_line}{shape file of uk outline}
+
+\item{otu_table}{filtered OTU table (created in step 1.2)}
+
+\item{enviroment_data}{enviromental data file. should contain the following column names
+"avc_code","avc","pH","eastings","northings, row names should be sample ID's
+(these should be able to be matched to Env file but don't need to be in the
+same order)}
 }
 \value{
 None
@@ -23,7 +28,7 @@ Step 3 Make map objects for DB.
 Step 3 Make map objects for DB
 }
 \note{
-Running this as separate function, btu perhaps this should be the start of another function?
+Running this as separate function, but perhaps this should be the start of another function?
 
 abund_table is called by env name: OTU_tab_sub_occ_dec
 looks like this sets up a series of functions and variables to be used in a latter step
@@ -34,7 +39,8 @@ Perhaps some of the functions to setup, like grid bit
 \examples{
 # Prepare map
 #map_prep(
-#  otu_table = "/Supplementary/Tables_in_SQL/OTU_abund.csv",
+#  otu_table = "supplementary/Tables_in_SQL/OTU_abund.csv",
+#  enviroment_data='country_side_survey/CS2007_Env_pH_AVC.csv'
 #  ukcoast_poly = 'ukcoast1.shp',
 #  ukcoast_line = 'ukcoast_line.shp'
 #)

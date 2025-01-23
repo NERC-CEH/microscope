@@ -81,6 +81,8 @@
 #' @return None
 #' @examples
 #'
+#' merge_AVC_location_data <- function('cs_avc_ph.csv', 'cs_location.csv', 'combined.csv')
+#' 
 #' @note
 #' This used the 10km areas from country side survey
 #' 
