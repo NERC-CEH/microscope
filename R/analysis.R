@@ -548,11 +548,11 @@ map_prep <- function(ukcoast_poly, ukcoast_line){
     latlong <- sf::st_crs(4326)  # WGS84 Lat/Long
     
     ## Read shapefiles, specifying CRS if needed
-    uk.poly <- sf::st_read(file.path(Map_objs_input_dir, "ukcoast1.shp"))
+    uk.poly <- sf::st_read(ukcoast_poly)
     uk.poly <- sf::st_set_crs(uk.poly, latlong)
     uk.poly <- sf::st_transform(uk.poly, ukgrid)
     
-    uk.line <- sf::st_read(file.path(Map_objs_input_dir, "ukcoast_line.shp"))
+    uk.line <- sf::st_read(ukcoast_line)
     uk.line <- sf::st_set_crs(uk.line, latlong)
     uk.line <- sf::st_transform(uk.line, ukgrid)
   
