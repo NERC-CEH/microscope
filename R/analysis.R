@@ -512,13 +512,11 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
 #' @details
 #' Step 3 Make map objects for DB
 #'
-#' @param otu_table filtered OTU table (created in step 1.2)
 #' @param ukcoast_poly shape file of uk polygon
 #' @param ukcoast_line shape file of uk outline
-#' @param enviroment_data enviromental data file. should contain the following column names
-#'  "avc_code","avc","pH","eastings","northings, row names should be sample ID's
-#'  (these should be able to be matched to Env file but don't need to be in the
-#'  same order)
+#' @param uk_poly_converted shape file of uk polygon
+#' @param uk_line_converted shape file of uk outline
+#' @param uk_grid_converted shape file of uk outline
 #'
 #' @return None
 #'
@@ -542,10 +540,15 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
 #' Perhaps some of the functions to setup, like grid bit
 #'
 #' @export
-map_prep <- function(ukcoast_poly, ukcoast_line){
+map_prep <- function(ukcoast_poly,
+                     ukcoast_line,
+                     uk_poly_converted,
+                     uk_line_converted,
+                     uk_grid_converted){
+    
     ## Explicitly define CRS
     ukgrid <- sf::st_crs(27700)  # British National Grid
-    latlong <- sf::st_crs(4326)  # WGS84 Lat/Long
+    latlong <- sf::st_crs(4326) # WGS84 Lat/Long
     
     ## Read shapefiles, specifying CRS if needed
     uk.poly <- sf::st_read(ukcoast_poly)
@@ -576,15 +579,15 @@ map_prep <- function(ukcoast_poly, ukcoast_line){
     terra::plot(grd_vect, add = TRUE, col = "blue", pch = ".")
     
     ## Return list of spatial objects
-    return(list(
-        uk_poly = uk.poly, 
-        uk_line = uk.line, 
-        grid = grd_vect
-    ))
+#    return(list(
+#        uk_poly = uk.poly, 
+#        uk_line = uk.line, 
+#        grid = grd_vect
+#    ))
 
-    sf::st_write(uk.poly, uk_poly_converted)
-    sf::st_write(uk.line, uk_line_converted)
-    terra::writeVector(grid, uk_grid)
+    sf::st_write(uk_poly, uk_poly_converted)
+    sf::st_write(uk_line, uk_line_converted)
+    terra::writeVector(grid, uk_gridconverted)
 }
 
 
