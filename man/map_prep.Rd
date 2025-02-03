@@ -4,19 +4,24 @@
 \alias{map_prep}
 \title{Put the filtered OTU, taxonomy, and abundance files into RSQLite files}
 \usage{
-map_prep(ukcoast_poly, ukcoast_line)
+map_prep(
+  ukcoast_poly,
+  ukcoast_line,
+  uk_poly_converted,
+  uk_line_converted,
+  uk_grid_converted
+)
 }
 \arguments{
 \item{ukcoast_poly}{shape file of uk polygon}
 
 \item{ukcoast_line}{shape file of uk outline}
 
-\item{otu_table}{filtered OTU table (created in step 1.2)}
+\item{uk_poly_converted}{shape file of uk polygon}
 
-\item{enviroment_data}{enviromental data file. should contain the following column names
-"avc_code","avc","pH","eastings","northings, row names should be sample ID's
-(these should be able to be matched to Env file but don't need to be in the
-same order)}
+\item{uk_line_converted}{shape file of uk outline}
+
+\item{uk_grid_converted}{shape file of uk outline}
 }
 \value{
 None
