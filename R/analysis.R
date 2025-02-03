@@ -7,7 +7,7 @@
 #' 
 #' @import data.table (>= 1.16)
 #' @import vegan (>= 2.6)
-#' @import terra (>= 1.8) 
+#' @import terra (>= 1.7) 
 #' @import ggplot2 
 #' @import gstat 
 #' @import parallel 
