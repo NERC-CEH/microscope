@@ -5,15 +5,15 @@
 #' 
 #' @author "Briony Jones"
 #' 
-#' @import data.table (>= 1.16)
-#' @import vegan (>= 2.6)
-#' @import terra (>= 1.7) 
-#' @import ggplot2 
-#' @import gstat 
+#' @import data.table (>= 1.15.4)
+#' @import vegan (>= 2.6_8)
+#' @import terra (>= 1.7_78) 
+#' @import ggplot2 (>= 3.5.1)
+#' @import gstat (>= 2.1_2)
 #' @import parallel 
-#' @import splitstackshape
+#' @import splitstackshape (>= 1.4.8)
 #' @import RSQLite (>= 2.3)
-#' @import DBI 
+#' @import DBI (>= 1.2.3
 #' @import sp (>= 2.1)
 #'
 #' @description Aim of script is to automate process of generating taxonomic explorer app linking marker gene sequences to environmental responses (see ID-TaxER https://shiny-apps.ceh.ac.uk/ID-TaxER/ for example of similar existing app). Script directly adds to SQL database and generates blast database for app backend and modifies r shiny template file to produce front end. Preprocessed tables (otu/taxonomy etc) and map objects are also saved locally for reference. At the moment this script is suitable for UK data only as uses UK map outline objects to run, should be suitable for all CS molecular datasets (which was really my motivation for writing this). Due to complexity of script would recommend running code chunk by code chunk, rather than knitting it (atleast while it is still being tested). Apps for multiple taxonomic datasets can be generated using repeated runs of this script and added to the same database if they share the same environmental data.
