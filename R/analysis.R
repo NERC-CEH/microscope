@@ -551,31 +551,31 @@ map_prep <- function(ukcoast_poly,
     latlong <- sf::st_crs(4326) # WGS84 Lat/Long
     
     ## Read shapefiles, specifying CRS if needed
-    uk.poly <- sf::st_read(ukcoast_poly)
-    uk.poly <- sf::st_set_crs(uk.poly, latlong)
-    uk.poly <- sf::st_transform(uk.poly, ukgrid)
+    uk_poly <- sf::st_read(ukcoast_poly)
+    uk_poly <- sf::st_set_crs(uk_poly, latlong)
+    uk_poly <- sf::st_transform(uk_poly, ukgrid)
     
-    uk.line <- sf::st_read(ukcoast_line)
-    uk.line <- sf::st_set_crs(uk.line, latlong)
-    uk.line <- sf::st_transform(uk.line, ukgrid)
+    uk_line <- sf::st_read(ukcoast_line)
+    uk_line <- sf::st_set_crs(uk_line, latlong)
+    uk_line <- sf::st_transform(uk_line, ukgrid)
   
     ## Create interpolation grid based on UK polygon bounding box
-    uk.poly_bbox <- sf::st_bbox(uk.poly)
-    x.range <- c(uk.poly_bbox["xmin"], uk.poly_bbox["xmax"])
-    y.range <- c(uk.poly_bbox["ymin"], uk.poly_bbox["ymax"])
+    uk_poly_bbox <- sf::st_bbox(uk_poly)
+    x_range <- c(uk_poly_bbox["xmin"], uk_poly_bbox["xmax"])
+    y_range <- c(uk_poly_bbox["ymin"], uk_poly_bbox["ymax"])
   
     ## Create grid for interpolation
     grd <- expand.grid(
-        x = seq(from = x.range[1], to = x.range[2], by = 5000),
-        y = seq(from = y.range[1], to = y.range[2], by = 5000)
+        x = seq(from = x_range[1], to = x_range[2], by = 5000),
+        y = seq(from = y_range[1], to = y_range[2], by = 5000)
     )
   
     ## Convert grid to SpatVector
     grd_vect <- terra::vect(grd, geom = c("x", "y"), crs = ukgrid$input)
   
     ## Optional: Visualization
-    terra::plot(terra::vect(uk.poly))
-    terra::plot(terra::vect(uk.line), add = TRUE, col = "red")
+    terra::plot(terra::vect(uk_poly))
+    terra::plot(terra::vect(uk_line), add = TRUE, col = "red")
     terra::plot(grd_vect, add = TRUE, col = "blue", pch = ".")
     
     ## Return list of spatial objects
