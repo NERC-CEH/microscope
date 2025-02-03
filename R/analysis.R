@@ -587,7 +587,7 @@ map_prep <- function(ukcoast_poly,
 
     sf::st_write(uk_poly, uk_poly_converted, driver = "ESRI Shapefile", overwrite = TRUE)
     sf::st_write(uk_line, uk_line_converted, driver = "ESRI Shapefile", overwrite = TRUE)
-    terra::writeVector(grid, uk_grid_converted,  driver = "ESRI Shapefile", overwrite = TRUE)
+    terra::writeVector(grd_vect, uk_grid_converted,  driver = "ESRI Shapefile", overwrite = TRUE)
 }
 
 
