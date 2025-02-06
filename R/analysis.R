@@ -156,10 +156,9 @@ merge_AVC_location_data <- function( AVC_data, CS_location_data, CS_AVC_combined
 #' @export
 clean_environmental_metadata <- function(enviroment_data,  filtered_env_data){
 
+    # This function used to filter out location data, not sure why, seems needed.
     Env=data.table::fread(enviroment_data)
 
-    Env_for_SQL=Env[,c("avc_code","avc","pH","E_2_FIG_10KM","N_2_FIG_10KM")]
-                                        # filter out Env rows without avc code 
     Env_for_SQL=Env_for_SQL[-which(is.na(Env_for_SQL$avc_code)),]
                                         # Rearrange slightly so suitable for inserting into
                                         # SQL- e.g make sample a column(rather than rownames)
@@ -168,8 +167,7 @@ clean_environmental_metadata <- function(enviroment_data,  filtered_env_data){
                                         # lower case
                                         # https://deeplearning.lipingyang.org/2017/01/07/
                                         # postgresql-column-names-of-a-table-are-case-sensitive/
-    Env_for_SQL=data.frame(sample=row.names(Env_for_SQL),Env_for_SQL[,1:2],ph=Env_for_SQL[,3],Env_for_SQL[,4:5])
-  data.table::fwrite(Env_for_SQL, filtered_env_data)
+    data.table::fwrite(Env_for_SQL, filtered_env_data)
 }
 
 ## Step 1.2
