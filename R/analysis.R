@@ -169,7 +169,7 @@ clean_environmental_metadata <- function(enviroment_data,  filtered_env_data){
                                         # https://deeplearning.lipingyang.org/2017/01/07/
                                         # postgresql-column-names-of-a-table-are-case-sensitive/
     Env_for_SQL=data.frame(sample=row.names(Env_for_SQL),Env_for_SQL[,1:2],ph=Env_for_SQL[,3],Env_for_SQL[,4:5])
-  write.csv(Env_for_SQL, filtered_env_data)
+  data.table::fwrite(Env_for_SQL, filtered_env_data)
 }
 
 ## Step 1.2
@@ -225,7 +225,7 @@ clean_OTU_table <- function( OTU_file, filtered_OTU_file, OTU_table_occupancy_fi
                                         #first make new subdir in our outdir(if doesnt already
                                         # exist) tO specify these are the tables that will be
                                         # stored in SQL 
-    write.csv(OTU_tab_sub_occ_dec,filtered_OTU_file)
+    data.table::fwrite(OTU_tab_sub_occ_dec,filtered_OTU_file)
 }
 
 ## Step 1.3
@@ -278,7 +278,7 @@ get_abundance_stats <- function(filtered_OTU_file, abundance_stats_file){
     abundance_stats$occupancy_proportion=paste(round(abundance_stats$occupancy/nrow(OTU_tab_sub_occ_dec_pa)*100,2),"% (Rank: ",rank(-round(abundance_stats$occupancy/nrow(OTU_tab_sub_occ_dec_pa)*100,2),ties.method="min"),"/",ncol(OTU_tab_sub_occ_dec_pa),")",sep="")
                                         #remove unnecessary columns
     abundance_stats=abundance_stats[,-c(2,4)]
-    write.csv(abundance_stats,abundance_stats_file,row.names=FALSE)
+    data.table::fwrite(abundance_stats,abundance_stats_file,row.names=FALSE)
 }
 
 ## Step 1.4
@@ -340,7 +340,7 @@ prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_ab
     Taxonomy_Sort$Genus <- sub(".*__", "", Taxonomy_Sort$Genus)
     Taxonomy_Sort$Species <- sub(".*__", "", Taxonomy_Sort$Species)
     Taxonomy_Sort[is.na(Taxonomy_Sort)] <- ""
-    write.csv(Taxonomy_Sort,filtered_taxonomy_file)
+    data.table::fwrite(Taxonomy_Sort,filtered_taxonomy_file)
 }
 
 
