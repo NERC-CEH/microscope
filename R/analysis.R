@@ -96,9 +96,7 @@ merge_AVC_location_data <- function( AVC_data, CS_location_data, CS_AVC_combined
     data.table::setnames(cs_avc, old = "V1", new = "ID", skip_absent = TRUE)
     
     cs_avc_with_location <- merge(cs_avc, cs_location, by = 'ID')
-
-    print(head(cs_avc_with_location))
-    write.csv(cs_avc_with_location, CS_AVC_combined)
+    data.table::fwrite(cs_avc_with_location, CS_AVC_combined)
 }
 
 
