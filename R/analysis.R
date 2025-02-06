@@ -165,7 +165,7 @@ clean_environmental_metadata <- function(enviroment_data,  filtered_env_data){
     Env=data.frame(fread(enviroment_data),row.names=1,check.names=FALSE)
                                         # dont need eastings and northings saved in database
                                         # as map objects made generated in advance
-    Env_for_SQL=Env[,c("avc_code","avc","pH")]
+    Env_for_SQL=Env[,c("avc_code","avc","pH","E_2_FIG_10KM","N_2_FIG_10KM")]
                                         # filter out Env rows without avc code 
     Env_for_SQL=Env_for_SQL[-which(is.na(Env_for_SQL$avc_code)),]
                                         # Rearrange slightly so suitable for inserting into
@@ -175,7 +175,7 @@ clean_environmental_metadata <- function(enviroment_data,  filtered_env_data){
                                         # lower case
                                         # https://deeplearning.lipingyang.org/2017/01/07/
                                         # postgresql-column-names-of-a-table-are-case-sensitive/
-    Env_for_SQL=data.frame(sample=row.names(Env_for_SQL),Env_for_SQL[,1:2],ph=Env_for_SQL[,3])
+    Env_for_SQL=data.frame(sample=row.names(Env_for_SQL),Env_for_SQL[,1:2],ph=Env_for_SQL[,3],Env_for_SQL[,4:5])
   write.csv(Env_for_SQL, filtered_env_data)
 }
 
