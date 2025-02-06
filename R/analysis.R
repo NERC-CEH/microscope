@@ -88,20 +88,16 @@
 #' 
 #' @export
 merge_AVC_location_data <- function( AVC_data, CS_location_data, CS_AVC_combined){
-
-    cs_avc = data.frame(fread(AVC_data,),row.names=1,check.names=FALSE)
-    cs_location = data.frame(fread(CS_location_data,),row.names=1,check.names=FALSE)
-
-    ## Need to tunr rownames into a column
-    cs_avc$row_names <- rownames(cs_avc)
-    cs_location$row_names <- rownames(cs_location)
-
-    cs_avc_with_location <- merge(cs_avc, cs_location, by = 'row_names')
-
-    ## convert the column "row_names" to row names and delete the column
-    rownames(cs_avc_with_location) <- cs_avc_with_location$row_names
-    cs_avc_with_location$row_names <- NULL
     
+    cs_avc = data.table::fread(AVC_data)
+    cs_location = data.table::fread(CS_location_data,)
+
+    ## "V1" means there were row names, we need to change this to a proprt column name
+    data.table::setnames(cs_avc, old = "V1", new = "ID", skip_absent = TRUE)
+    
+    cs_avc_with_location <- merge(cs_avc, cs_location, by = 'ID')
+
+    print(head(cs_avc_with_location))
     write.csv(cs_avc_with_location, CS_AVC_combined)
 }
 
@@ -161,10 +157,9 @@ merge_AVC_location_data <- function( AVC_data, CS_location_data, CS_AVC_combined
 #' Original code provided output variable: Env_for_SQL
 #' @export
 clean_environmental_metadata <- function(enviroment_data,  filtered_env_data){
-                                        #read in Env
-    Env=data.frame(fread(enviroment_data),row.names=1,check.names=FALSE)
-                                        # dont need eastings and northings saved in database
-                                        # as map objects made generated in advance
+
+    Env=data.table::fread(enviroment_data)
+
     Env_for_SQL=Env[,c("avc_code","avc","pH","E_2_FIG_10KM","N_2_FIG_10KM")]
                                         # filter out Env rows without avc code 
     Env_for_SQL=Env_for_SQL[-which(is.na(Env_for_SQL$avc_code)),]
@@ -216,7 +211,7 @@ clean_environmental_metadata <- function(enviroment_data,  filtered_env_data){
 clean_OTU_table <- function( OTU_file, filtered_OTU_file, OTU_table_occupancy_filter=30){
     
                                         #read in OTU_tab
-    OTU_tab=data.frame(fread( OTU_file),row.names=1,check.names=FALSE)
+    OTU_tab=data.frame(data.table::fread( OTU_file),row.names=1,check.names=FALSE)
                                         #remove samples from OTU tab with reads less than 5000
     OTU_tab_sub<-OTU_tab[rowSums(OTU_tab)>5000,]
                                         # Convert OTU_tab_sub to presence and absence in order to
@@ -267,7 +262,7 @@ clean_OTU_table <- function( OTU_file, filtered_OTU_file, OTU_table_occupancy_fi
 get_abundance_stats <- function(filtered_OTU_file, abundance_stats_file){
 
                                         # get the otu table
-    OTU_tab_sub_occ_dec = data.frame(fread(filtered_OTU_file),row.names=1,check.names=FALSE)
+    OTU_tab_sub_occ_dec = data.frame(data.table::fread(filtered_OTU_file),row.names=1,check.names=FALSE)
     
                                         #lets get OTUs total abundance across all remaining samples
     abundance_stats=data.frame(hit=colnames(OTU_tab_sub_occ_dec),abundance=colSums(OTU_tab_sub_occ_dec))
@@ -648,12 +643,12 @@ save_otu_map <- function(OTU_name,  # Not sure what this is.
 
 
                                         #read in OTU_tab
-    OTU_table = data.frame(fread(otu_table),
+    OTU_table = data.frame(data.table::fread(otu_table),
                            row.names=1,
                            check.names=FALSE)
 
                                         #read in enviromental data
-    env_data = data.frame(fread(enviroment_data),
+    env_data = data.frame(data.table::fread(enviroment_data),
                            row.names=1,
                            check.names=FALSE)
                                         # first lets get env in the same order as otu table
