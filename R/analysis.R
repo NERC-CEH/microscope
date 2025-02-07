@@ -159,7 +159,7 @@ clean_environmental_metadata <- function(enviroment_data,  filtered_env_data){
     # This function used to filter out location data, not sure why, seems needed.
     Env=data.table::fread(enviroment_data)
 
-    Env_for_SQL=Env_for_SQL[-which(is.na(Env_for_SQL$avc_code)),]
+    Env_for_SQL=Env[-which(is.na(Env_for_SQL$avc_code)),]
                                         # Rearrange slightly so suitable for inserting into
                                         # SQL- e.g make sample a column(rather than rownames)
                                         # and change "pH" colname to "ph" as standard
