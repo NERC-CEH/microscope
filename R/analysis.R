@@ -223,7 +223,8 @@ clean_OTU_table <- function( OTU_file, filtered_OTU_file, OTU_table_occupancy_fi
                                         #first make new subdir in our outdir(if doesnt already
                                         # exist) tO specify these are the tables that will be
                                         # stored in SQL 
-    data.table::fwrite(OTU_tab_sub_occ_dec,filtered_OTU_file)
+    OTU_out <- data.table::data.table(rownames(OTU_tab_sub_occ_dec), OTU_tab_sub_occ_dec)
+    data.table::fwrite(OTU_out,filtered_OTU_file)
 }
 
 ## Step 1.3
