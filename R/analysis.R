@@ -224,6 +224,7 @@ clean_OTU_table <- function( OTU_file, filtered_OTU_file, OTU_table_occupancy_fi
                                         # exist) tO specify these are the tables that will be
                                         # stored in SQL 
     OTU_out <- data.table::data.table(rownames(OTU_tab_sub_occ_dec), OTU_tab_sub_occ_dec)
+    data.table::setnames(OTU_out, 1, "ID")
     data.table::fwrite(OTU_out,filtered_OTU_file)
 }
 
