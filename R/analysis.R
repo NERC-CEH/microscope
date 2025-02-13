@@ -435,7 +435,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
 
     ## Create table, taxonomy
     taxonomy_db <- DBI::dbConnect(RSQLite::SQLite(), "taxonomy_db.sqlite")
-    DBI::dbExecute(conn = taxonomy_db, statement = sql_command)
+    DBI::dbExecute(conn = taxonomy_db, statement = sql_command_taxonomy)
     ## Fill table
     DBI::dbWriteTable(taxonomy_db, "taxonomy_table", taxonomy_csv, append = TRUE, row.names = FALSE)
     ## Disconnect, best practise?
@@ -457,7 +457,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
 
     ## Create table, otu
     otu_db <- DBI::dbConnect(RSQLite::SQLite(), "otu_db.sqlite")
-    DBI::dbExecute(conn = otu_db, statement = sql_command)
+    DBI::dbExecute(conn = otu_db, statement = sql_command_otu)
     ## Fill table
     DBI::dbWriteTable(otu_db, "otu_table", otu_csv, append = TRUE, row.names = FALSE)
     ## Disconnect, best practise?
