@@ -313,33 +313,20 @@ get_abundance_stats <- function(filtered_OTU_file, abundance_stats_file){
 #' 
 #' @export
 prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_abund_filter_file){
-    
-    Taxonomy <- read.csv(taxonomy_file)
-                                        # data is two columns (OTU and taxa).
+    Taxonomy <- data.table::fread(taxonomy_file)
+                                        # data is two columns (OTU and taxa)
                                         # Split into multiple taxonomy columns (taxonomy_1, etc)
-    Taxonomy<-as.data.frame(cSplit(indt=Taxonomy,splitCols=2,sep=";"))
+    Taxonomy<-splitstackshape::cSplit(indt=Taxonomy,splitCols=2,sep=";")
                                         # rename taxonomy columns to correct ¿levels?
     colnames(Taxonomy)=c("hit","Kingdom","Phylum","Class","Order","Family","Genus","Species")
     row.names(Taxonomy)=Taxonomy$hit
-    
-                                        # rel Current code does not generate output as expected.
-                                        # rel added this to ensure match
-    Taxonomy[,'hit'] <- NULL  
                                         #filter to match OTU table
-    OTU_abund_filter <- colnames(data.table::fread(OTU_abund_filter_file))
-    Taxonomy_filt <- Taxonomy[OTU_abund_filter,]
+    OTU_abund_filter <- colnames(data.table::fread(OTU_abund_filter_file)) 
+    Taxonomy_filt <- Taxonomy[hit %in% OTU_abund_filter]
     Taxonomy_Sort <- Taxonomy_filt[ order(row.names(Taxonomy_filt)),]
+    Taxonomy_Sort <- Taxonomy_Sort[, lapply(.SD, function(x) sub(".*__", "", x))]
+    Taxonomy_Sort[is.na(Taxonomy_Sort)] <- ""  
     
-                                        # rel Current code does not generate output as expected.
-                                        # rel added this to ensure match by cleaning up entries
-    Taxonomy_Sort$Kingdom <- sub(".*__", "", Taxonomy_Sort$Kingdom)
-    Taxonomy_Sort$Phylum <- sub(".*__", "", Taxonomy_Sort$Phylum)
-    Taxonomy_Sort$Class <- sub(".*__", "", Taxonomy_Sort$Class)
-    Taxonomy_Sort$Order <- sub(".*__", "", Taxonomy_Sort$Order)
-    Taxonomy_Sort$Family <- sub(".*__", "", Taxonomy_Sort$Family)
-    Taxonomy_Sort$Genus <- sub(".*__", "", Taxonomy_Sort$Genus)
-    Taxonomy_Sort$Species <- sub(".*__", "", Taxonomy_Sort$Species)
-    Taxonomy_Sort[is.na(Taxonomy_Sort)] <- ""
     data.table::fwrite(Taxonomy_Sort,filtered_taxonomy_file)
 }
 
