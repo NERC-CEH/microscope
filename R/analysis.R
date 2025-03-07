@@ -633,7 +633,6 @@ save_otu_map <- function(OTU_name,  # Name of OTU we want to create map for.
 
   # First lets get env in the same order as OTU table
   Env_sub <- env_data[row.names(OTU_table), ]
-  print(identical(row.names(Env_sub), row.names(OTU_table)))
 
   # OTU abundance extraction
   otu_abund <- OTU_table[, OTU_name, drop = FALSE]
