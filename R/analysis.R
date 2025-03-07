@@ -614,112 +614,87 @@ map_prep <- function(ukcoast_poly,
 #' which or why
 #'
 #' @export
-save_otu_map <- function(OTU_name,  # Not sure what this is.
-                         OTU_table, # filtered table
-                         Env_table, # Env_sub #created in map_prep
-                         Grid,      # created in map_prep
-                         UK_poly,   # uk.poly #created in map_prep
-                         UK_line,   # uk.line #created in map_prep
-                         Conn,      # SQLdb, removed so correct
-                         Schema_table_prefix, # removed for time being
-                         Output_dir, # again, abandoned in favour of dir in string
-                         Make_png # flag
-                         ){
+save_otu_map <- function(OTU_name,  # Name of OTU we want to create map for.
+                         OTU_table_in, # filtered table
+                         environment_data, # Env_table_in#, # Env_sub # created in map_prep
+                         Grid_file,      # created in map_prep
+                         UK_poly_file,   # uk.poly # created in map_prep
+                         UK_line_file,   # uk.line # created in map_prep
+                         Make_png = FALSE #Does not work with terra <1.8.5
+                         ) {
 
+  # Read in OTU and env
+  env_table <- data.table::fread(environment_data)
+  otu_table <- data.table::fread(OTU_table_in)
+  env_table <- env_table[ID %in% otu_table$ID]
 
-                                        #read in OTU_tab
-    OTU_table = data.frame(data.table::fread(otu_table),
-                           row.names=1,
-                           check.names=FALSE)
+  OTU_table <- data.frame(otu_table, row.names = 1, check.names = FALSE)
+  env_data <- data.frame(env_table, row.names = 1, check.names = FALSE)
 
-                                        #read in enviromental data
-    env_data = data.frame(data.table::fread(enviroment_data),
-                           row.names=1,
-                           check.names=FALSE)
-                                        # first lets get env in the same order as otu table
+  # First lets get env in the same order as OTU table
+  Env_sub <- env_data[row.names(OTU_table), ]
+  print(identical(row.names(Env_sub), row.names(OTU_table)))
 
-                                        # Env is Env.csv file read in as a dataframe which is csv
-    
-    Env_sub = env_data[row.names(OTU_table),]
-                                        # Isnt this just a "test" so does nothing?
-    identical(row.names(Env_sub),row.names(OTU_table))
+  # OTU abundance extraction
+  otu_abund <- OTU_table[, OTU_name, drop = FALSE]
+  dat <- cbind(env_data[, c('E_2_FIG_10KM', 'N_2_FIG_10KM')], otu_abund)
+  colnames(dat)[3] <- "OTU"
+  dat <- dat[complete.cases(dat), ]
 
+  # Read spatial data
+  Grid <- sf::st_read(Grid_file)
+  UK_poly <- sf::st_read(UK_poly_file)
+  UK_line <- sf::st_read(UK_line_file)
+
+  # Convert the data to an sf object
+  dat_sf <- sf::st_as_sf(dat, coords = c("E_2_FIG_10KM", "N_2_FIG_10KM"), crs = 27700)
+  
+  # Perform kriging interpolation
+  spc.idw <- gstat::krige(OTU ~ 1, dat_sf, Grid)
+  ukgrid <- 27700
+  spc.idw_sf <- sf::st_as_sf(spc.idw)
+  sf::st_crs(spc.idw_sf) <- ukgrid
+  
+  # Clip interpolation to UK coastline
+  overlay.idw <- sf::st_intersection(spc.idw_sf, UK_poly)
+  newmap <- overlay.idw
+
+  # Define break intervals
+  minv <- min(otu_abund)
+  maxv <- max(otu_abund)
+  at <- c(minv, signif(maxv / 256, 1), signif(maxv / 128, 1), signif(maxv / 64, 1), signif(maxv / 32, 1), 
+          signif(maxv / 16, 1), signif(maxv / 8, 1), signif(maxv / 4, 2), signif(maxv / 2, 2), maxv)
+
+  # Save map object to output directory
+  mapandinfo <- c(newmap, at)
+  save(mapandinfo, file = paste0('data/02_processed_data/per_otu_map_data/', OTU_name, ".RData"))
+  ser_mapandinfo <- serialize(mapandinfo, connection = NULL, ascii = FALSE)
+  maps_db <- DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
+  sql_command_maps <- "UPDATE maps_table SET map_object = ? WHERE otu_name = ?"
+  DBI::dbExecute(maps_db, sql_command_maps, params = list(OTU_name, list(ser_mapandinfo)))
+  DBI::dbDisconnect(maps_db)
+
+  # PNG creation flag
+  Make_png <- TRUE
+  if (Make_png) {
+    tmap::tmap_mode("plot")
+    options(tmap.raster.backend = "raster")
     
-    ## drop=FALSE protects against conversion to vector instead of dataframe
-    ## OTU_name is column selection of some kind, need to find definition and
-    ## reasoning
-    otu_abund <- OTU_table[,OTU_name,drop=FALSE]
-    
-                                        #make dataframe with eastings and northings
-                                        # binds to otu_abund as well?
-    dat <- cbind(Env_table[,c('eastings','northings')],otu_abund)
-    colnames(dat)[3] = "OTU"
-    dat <- dat[complete.cases(dat), ]
-    attach(dat)
-                                        #specify the coordinates for the file with otu
-    
-    ## could we expans this to:
-    ## sp::coordinates(dat) = ~dat$eastings+dat$northings  as attach puts columns in namespace?
-    sp::coordinates(dat) = ~eastings+northings
-                                        #interpolate
-    
-    spc.idw <- gstat::krige(OTU~1,dat,Grid)
-    ukgrid = "+init=epsg:27700"
-    spc.idw@proj4string <- sp::CRS(ukgrid)
-                                        #now need to only show interpolation within UK coastline
-    overlay.idw <- sp::over(spc.idw,UK_poly)
-    newmap = spc.idw[complete.cases(overlay.idw),]
-                                        #set heat map scale, want this to be dependent on OTU abundance i.e we want to show abundance contrast relative to that OTU
-    minv = min(otu_abund)
-    maxv = max(otu_abund)
-    at = c(minv,
-           signif(maxv/256,1),
-           signif(maxv/128,1),
-           signif(maxv/64,1),
-           signif(maxv/32,1),
-           signif(maxv/16,1),
-           signif(maxv/8,),
-           signif(maxv/4,2),
-           signif(maxv/2,2),
-           maxv
-           )
-                                        #save map object to outdir
-    mapandinfo <- c(newmap,at)
-    
-    save(mapandinfo, file=paste(Output_dir,"/",OTU_name,".RData",sep=""))
-    
-                                        #Add object to database  
-                                        #need to first get object into a form suitable for SQL
-                                        #convert to stream of bytes
-    
-    ## Serialise converts all pointers and links to objects into one object
-    ## so that it can be saved or transferred
-    ser_mapandinfo = serialize(mapandinfo,connection=NULL,ascii=TRUE)
-    
-    ## will fill maps table in step 3 using save_otu_map function
-    
-    sql_command_maps <- sprintf("insert into maps_table values (?, ?)")
-    DBI::dbExecute(maps_db, sql_command_maps, params = list(OTU_name, ser_mapandinfo))
-    DBI::dbDisconnect(maps_db)
-    
-                   if (Make_png==TRUE){ 
-                       map_plot = sp::spplot(newmap["var1.pred"],
-                                             at = at,
-                                             sp.layout=list("sp.lines",UK_line,col="black",lwd=2)
-                                             )
-                       
-                       dir.create(paste0(Output_dir,"/png"),
-                                  showWarnings = FALSE,
-                                  recursive=TRUE)
-                       
-                       png(file=paste0(Output_dir,"/png/",OTU_name,"_plot.png"),
-                           width=200, height=400)
-                       print(map_plot)
-                       dev.off()
-                   }
+    # Create map plot using tmap without terra
+    map_plot <- tmap::tm_shape(newmap) + 
+      tmap::tm_grid(breaks = at, col = "viridis", title = "Predicted Values") +
+      tmap::tm_shape(UK_line) + tmap::tm_lines(col = "black", lwd = 2) +
+      tmap::tm_layout(title = OTU_name, legend.outside = TRUE)
+
+    # Create PNG directory if it doesn't exist
+    base::dir.create(base::paste0(Output_dir, "/png"), showWarnings = FALSE, recursive = TRUE)
+
+    # Save plot as PNG
+    grDevices::png(file = base::paste0(Output_dir, "/png/", OTU_name, "_plot.png"), width = 200, height = 400)
+    base::print(map_plot)
+    grDevices::dev.off()
+  }
 }
-    
-    
     
 
 ### 3.2 Generate maps per OTU
