@@ -624,63 +624,62 @@ save_otu_map <- function(OTU_name,  # Name of OTU we want to create map for.
                          ) {
 
   # Read in OTU and env
-  env_table <- data.table::fread(environment_data)
-  otu_table <- data.table::fread(OTU_table_in)
-  env_table <- env_table[ID %in% otu_table$ID]
+  env_table = data.table::fread(environment_data)
+  otu_table = data.table::fread(OTU_table_in)
+  env_table = env_table[ID %in% otu_table$ID]
 
-  OTU_table <- data.frame(otu_table, row.names = 1, check.names = FALSE)
-  env_data <- data.frame(env_table, row.names = 1, check.names = FALSE)
+  OTU_table = data.frame(otu_table, row.names = 1, check.names = FALSE)
+  env_data = data.frame(env_table, row.names = 1, check.names = FALSE)
 
   # First lets get env in the same order as OTU table
-  Env_sub <- env_data[row.names(OTU_table), ]
+  Env_sub = env_data[row.names(OTU_table), ]
 
   # OTU abundance extraction
-  otu_abund <- OTU_table[, OTU_name, drop = FALSE]
-  dat <- cbind(env_data[, c('E_2_FIG_10KM', 'N_2_FIG_10KM')], otu_abund)
-  colnames(dat)[3] <- "OTU"
-  dat <- dat[complete.cases(dat), ]
+  otu_abund = OTU_table[, OTU_name, drop = FALSE]
+  dat = cbind(env_data[, c('E_2_FIG_10KM', 'N_2_FIG_10KM')], otu_abund)
+  colnames(dat)[3] = "OTU"
+  dat = dat[complete.cases(dat), ]
 
   # Read spatial data
-  Grid <- sf::st_read(Grid_file)
-  UK_poly <- sf::st_read(UK_poly_file)
-  UK_line <- sf::st_read(UK_line_file)
+  Grid = sf::st_read(Grid_file)
+  UK_poly = sf::st_read(UK_poly_file)
+  UK_line = sf::st_read(UK_line_file)
 
   # Convert the data to an sf object
-  dat_sf <- sf::st_as_sf(dat, coords = c("E_2_FIG_10KM", "N_2_FIG_10KM"), crs = 27700)
+  dat_sf = sf::st_as_sf(dat, coords = c("E_2_FIG_10KM", "N_2_FIG_10KM"), crs = 27700)
   
   # Perform kriging interpolation
-  spc.idw <- gstat::krige(OTU ~ 1, dat_sf, Grid)
-  ukgrid <- 27700
-  spc.idw_sf <- sf::st_as_sf(spc.idw)
-  sf::st_crs(spc.idw_sf) <- ukgrid
+  spc.idw = gstat::krige(OTU ~ 1, dat_sf, Grid)
+  ukgrid = 27700
+  spc.idw_sf = sf::st_as_sf(spc.idw)
+  sf::st_crs(spc.idw_sf) = ukgrid
   
   # Clip interpolation to UK coastline
-  overlay.idw <- sf::st_intersection(spc.idw_sf, UK_poly)
-  newmap <- overlay.idw
+  overlay.idw = sf::st_intersection(spc.idw_sf, UK_poly)
+  newmap = overlay.idw
 
   # Define break intervals
-  minv <- min(otu_abund)
-  maxv <- max(otu_abund)
-  at <- c(minv, signif(maxv / 256, 1), signif(maxv / 128, 1), signif(maxv / 64, 1), signif(maxv / 32, 1), 
+  minv = min(otu_abund)
+  maxv = max(otu_abund)
+  at = c(minv, signif(maxv / 256, 1), signif(maxv / 128, 1), signif(maxv / 64, 1), signif(maxv / 32, 1), 
           signif(maxv / 16, 1), signif(maxv / 8, 1), signif(maxv / 4, 2), signif(maxv / 2, 2), maxv)
 
   # Save map object to output directory
-  mapandinfo <- c(newmap, at)
+  mapandinfo = c(newmap, at)
   save(mapandinfo, file = paste0('data/02_processed_data/per_otu_map_data/', OTU_name, ".RData"))
-  ser_mapandinfo <- serialize(mapandinfo, connection = NULL, ascii = FALSE)
-  maps_db <- DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
-  sql_command_maps <- "UPDATE maps_table SET map_object = ? WHERE otu_name = ?"
+  ser_mapandinfo = serialize(mapandinfo, connection = NULL, ascii = FALSE)
+  maps_db = DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
+  sql_command_maps = "UPDATE maps_table SET map_object = ? WHERE otu_name = ?"
   DBI::dbExecute(maps_db, sql_command_maps, params = list(OTU_name, list(ser_mapandinfo)))
   DBI::dbDisconnect(maps_db)
 
   # PNG creation flag
-  Make_png <- TRUE
   if (Make_png) {
     tmap::tmap_mode("plot")
     options(tmap.raster.backend = "raster")
     
     # Create map plot using tmap without terra
-    map_plot <- tmap::tm_shape(newmap) + 
+    map_plot = tmap::tm_shape(newmap) + 
       tmap::tm_grid(breaks = at, col = "viridis", title = "Predicted Values") +
       tmap::tm_shape(UK_line) + tmap::tm_lines(col = "black", lwd = 2) +
       tmap::tm_layout(title = OTU_name, legend.outside = TRUE)
