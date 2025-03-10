@@ -665,7 +665,7 @@ save_otu_map <- function(OTU_name,  # Name of OTU we want to create map for.
           signif(maxv / 16, 1), signif(maxv / 8, 1), signif(maxv / 4, 2), signif(maxv / 2, 2), maxv)
 
   # Save map object to output directory
-  mapandinfo = c(newmap, at)
+  mapandinfo = cbind(newmap, at)
   save(mapandinfo, file = paste0('data/02_processed_data/per_otu_map_data/', OTU_name, ".RData"))
   ser_mapandinfo = serialize(mapandinfo, connection = NULL, ascii = FALSE)
   maps_db = DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
