@@ -749,22 +749,6 @@ maps_parallelise <- function(Output_dir_with_occ,
     clusterExport(cl,c("save_otu_map","OTU_tab_sub_occ_dec","Env_sub","grd","params","Output_dir_with_occ","Schema_table_prefix_modified","uk.poly","uk.line"))
     
     
-                                        #need to connect to the database on all 40 cpu
-    clusterEvalQ(cl, {
-        library(RPostgreSQL)  
-        drv=DBI::dbDriver("PostgreSQL")
-        conn<- DBI::dbConnect(drv, 
-                              dbname = params$SQL_database_name,
-                              host = params$SQL_database_host, 
-                              port = '5432',
-                              user=Sys.getenv('SQL_USER'),
-                              password = Sys.getenv('SQL_PWD')
-                              )
-    }
-    )
-    
-    
-    
     parSapply(cl, colnames(OTU_tab_sub_occ_dec), function(x) {
         save_otu_map(
             OTU_name = x,
