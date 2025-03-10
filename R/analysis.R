@@ -765,7 +765,20 @@ maps_parallelise <- function(Output_dir_with_occ,
     
     
     
-    parSapply(cl,colnames(OTU_tab_sub_occ_dec), function(x) save_otu_map(OTU_name=x,OTU_table=OTU_tab_sub_occ_dec,Env_table=Env_sub,Grid=grd,UK_poly=uk.poly,UK_line=uk.line,Conn=conn,Schema_table_prefix=Schema_table_prefix_modified,Output_dir=paste0(Output_dir_with_occ,"/Supplementary/Map_objects"),Make_png=FALSE))
+    parSapply(cl, colnames(OTU_tab_sub_occ_dec), function(x) {
+        save_otu_map(
+            OTU_name = x,
+            OTU_table = OTU_tab_sub_occ_dec,
+            Env_table = Env_sub,
+            Grid = grd,
+            UK_poly = uk.poly,
+            UK_line = uk.line,
+            Conn = conn,
+            Schema_table_prefix = Schema_table_prefix_modified,
+            Output_dir = paste0(Output_dir_with_occ,"/Supplementary/Map_objects"),
+            Make_png=FALSE
+        )
+        })
     stopCluster(cl)
     
     ## ```
