@@ -415,7 +415,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     ## fields in quotes
     
     sql_command_taxonomy <- sprintf("create table taxonomy_table (hit character varying (30), %s character varying (250), primary key (hit))",
-                                    paste('"',colnames(abundance_csv)[-1],'"',
+                                    paste('"',colnames(taxonomy_csv)[-1],'"',
                                           collapse=' charater varying(250),',
                                           sep='')
                                     )
