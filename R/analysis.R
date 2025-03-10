@@ -668,9 +668,8 @@ save_otu_map <- function(OTU_name,  # Name of OTU we want to create map for.
   mapandinfo = cbind(newmap, at)
   save(mapandinfo, file = paste0('data/02_processed_data/per_otu_map_data/', OTU_name, ".RData"))
   ser_mapandinfo = serialize(mapandinfo, connection = NULL, ascii = FALSE)
-    maps_db = DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
-  sql_command_maps <- sprintf("insert into maps_table values (?, ?)")
- # sql_command_maps = "UPDATE maps_table SET map_object = ? WHERE otu_name = ?"
+  maps_db = DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
+  sql_command_maps <- "insert into maps_table (otu_name, map_object) values (?, ?)"
   DBI::dbExecute(maps_db, sql_command_maps, params = list(OTU_name, list(ser_mapandinfo)))
   DBI::dbDisconnect(maps_db)
 
