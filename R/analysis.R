@@ -1,8 +1,5 @@
-#' Microscope
+#' Microscope: Generate taxonomic explorer app inputs
 #'
-#' Generate taxonomic explorer app inputs
-#'
-#' 
 #' @author "Briony Jones"
 #' 
 #' @import data.table (>= 1.15.4)
@@ -13,86 +10,46 @@
 #' @import parallel 
 #' @import splitstackshape (>= 1.4.8)
 #' @import RSQLite (>= 2.3)
-#' @import DBI (>= 1.2.3
+#' @import DBI (>= 1.2.3)
 #' @import sp (>= 2.1)
+#' @import sf
+#' @import tmap
 #'
-#' @description Aim of script is to automate process of generating taxonomic explorer app linking marker gene sequences to environmental responses (see ID-TaxER https://shiny-apps.ceh.ac.uk/ID-TaxER/ for example of similar existing app). Script directly adds to SQL database and generates blast database for app backend and modifies r shiny template file to produce front end. Preprocessed tables (otu/taxonomy etc) and map objects are also saved locally for reference. At the moment this script is suitable for UK data only as uses UK map outline objects to run, should be suitable for all CS molecular datasets (which was really my motivation for writing this). Due to complexity of script would recommend running code chunk by code chunk, rather than knitting it (atleast while it is still being tested). Apps for multiple taxonomic datasets can be generated using repeated runs of this script and added to the same database if they share the same environmental data.
+#' @description This script automates the process of generating a taxonomic explorer app 
+#'   that links marker gene sequences to environmental responses. The application is similar to
+#'   ID-TaxER (https://shiny-apps.ceh.ac.uk/ID-TaxER/). The script creates an SQL database 
+#'   and a BLAST database for the app backend, and modifies an R Shiny template file to produce 
+#'   the front end. Preprocessed tables (OTU/taxonomy) and map objects are also saved locally 
+#'   for reference. Currently, this script is suitable for UK data only as it uses UK map outline
+#'   objects. It should work for all CS (Countryside Survey) molecular datasets. Multiple 
+#'   taxonomic datasets can be added to the same database if they share the same environmental data.
 #'
-
-
-
-#' #@param OTU_tab_file should have OTU's/ASV's as column names and sample IDs as row
-#   names (row names must be able to be matched to Env file row names- but do
-#   not need to be in the same order)
-#' #@param Tax_file with two columns one with OTU/ASV names and the other with
-#   taxonomic classification delimited by ";" (OTUs/ASVs must be able to be
-#   matched to OTU_tab, but do not need to be in the same order)
-#' #@param Fasta_file with OTU representative sequences/ ASV sequences corresponding to
-#  taxa in OTU_tab_file and Tax_file
-#' #@param Env_file should contain the following column names
-#  "avc_code","avc","pH","eastings","northings, row names should be sample ID's
-#  (these should be able to be matched to Env file but don't need to be in the
-#  same order)
-#' #@param App_template_input_dir location of shiny app template 
-#'
-#' #@param OTU_tab_occ_filter: The minimum amount of samples an OTU should occur in to be included in app
-#' #@param Map_objs_input_dir: Directory with input map objects files
-#  ''ukcoast_line.shp' and 'ukcoast1.shp'
-#' #@param Output_dir: Directory for all outputs
-#' #@param SQL_database_name: Name of database to input pre-processed tables and maps,
-#  to be used as shiny app back end
-#' #@param SQL_database_host: Database host address for data inputs
-#' #@param Schema_table_prefix: This string will be added to database schema and table
-#  names (e.g could name after taxonomic kingdom if multiple taxonomic kingdoms
-#  sharing the same database)
-#' #@param Empty_database: TRUE/FALSE, if database is empty all database schemas will be
-#  created; env table and uk mapping object will be added to the database
-#  alongside OTU related data. If FALSE It will be assumed the database already
-#  contains data for other taxonomic datasets and that the majority of schemas
-#  will already exist.will have already been created and env table and mapping
-#  object should already be exist in the database.
-#' #@param Use_occupancy_in_schema_table_names: TRUE/FALSE, if TRUE will add occupancy
-#  into otu_attributes schema and into abund_tables table name, this is useful
-#  if initially trialing different occupancy filtering in app (although will
-#  likely want to go back and delete unnecessary schemas/ tables later).
-#' #@param App_title: Title to appear on the app header (not linked to future web
-#  address)
-#' #@param Example_sequence: Sequence to be used as an example sequence for users when
-#  exploring the app
-#' #@param Info_text: Text to feature on app describing purpose and function
-#'
-
+#' @note Due to the complexity of this script, it's recommended to run it chunk by chunk
+#'   rather than knitting the entire file at once, especially during testing.
 
 #' Step 0.1
-#' Merge AVC with location from CountrySide survery.
+#' Merge AVC with location from CountrySide survey
 #'
-#' @description
-#' Merge AVC with location from CountrySide survery.
+#' @description Combines AVC (Aggregate Vegetation Class) data with location information from
+#'   the Countryside survey.
 #' 
-#' @details
-#' Filters out rows (OTU) by occupancy level
-#' - Takes in Data from a raw OTU table
-#' - Filters based on occupancy level
-#'
-#' @param AVC_data name of input file with AVC and PH data
-#' @param CS_location_data name of input file to use for Countryside survey location data
-#' @param CS_AVC_combined name of output file with combined data
+#' @param AVC_data Character string. Path to input file with AVC and pH data.
+#' @param CS_location_data Character string. Path to input file with Countryside survey location data.
+#' @param CS_AVC_combined Character string. Path where the combined output file will be saved.
 #' 
-#' @return None
+#' @return None. The function writes the combined data to the specified output file.
+#' 
 #' @examples
-#'
-#' merge_AVC_location_data <- function('cs_avc_ph.csv', 'cs_location.csv', 'combined.csv')
+#' merge_AVC_location_data("data/cs_avc_ph.csv", "data/cs_location.csv", "data/combined.csv")
 #' 
-#' @note
-#' This used the 10km areas from country side survey
+#' @note This uses the 10km areas from Countryside survey.
 #' 
 #' @export
-merge_AVC_location_data <- function( AVC_data, CS_location_data, CS_AVC_combined){
-    
-    cs_avc = data.table::fread(AVC_data)
-    cs_location = data.table::fread(CS_location_data,)
+merge_AVC_location_data <- function(AVC_data, CS_location_data, CS_AVC_combined) {
+    cs_avc <- data.table::fread(AVC_data)
+    cs_location <- data.table::fread(CS_location_data)
 
-    ## "V1" means there were row names, we need to change this to a proprt column name
+    # "V1" means there were row names, we need to change this to a proper column name
     data.table::setnames(cs_avc, old = "V1", new = "ID", skip_absent = TRUE)
     
     cs_avc_with_location <- merge(cs_avc, cs_location, by = 'ID')
@@ -103,468 +60,389 @@ merge_AVC_location_data <- function( AVC_data, CS_location_data, CS_AVC_combined
 
 ## Step 1 Prepare tables for database
 
-### Prepare  OTU tab and Env 
-
-# Need to preprocess data, first will remove low read samples from OTU table.
-# Then will remove OTUs with very low occupancy from OTU table (using `r
-# params$OTU_tab_occ_filter` threshold) and normalise (decostand). Not going to
-# filter samples from env based on OTU table read numbers in database -incase
-# other taxonomic datasets added to database at a later date, to ensure all
-# database OTU tables can be matched to env. Matching of samples between env and
-# OTU table will be done within the app code itself.  
-# Will filter out env samples with no AVC info for database as the purpose of
-# the env info being there is to produce the habitat boxplots Will save modified
-# OTU tab and env file to `r params$Output_dir`/Supplementary/Tables_in_SQL
-# subfolder for reference.
-
-
 ## Step 1.1
 #' Clean up enviromental metadata
 #'
-#' @description
-#' Clean up enviromental metadata. 
+#' @description Processes and formats environmental metadata for use in the taxonomic explorer app.
 #' 
-#' @details
-#' Takes in pre-prcoessed data and cleans it up:
-#' - Removes unneeded fields
-#' - rearranges into a format SQL is happier with
-#' - Write new data to file
+#' @details The function removes unnecessary fields and rearranges the data into a format 
+#'   suitable for SQL. It removes samples with missing AVC codes.
 #'
-#' @param enviroment_data enviromental data file. should contain the following column names
-#'  "avc_code","avc","pH","eastings","northings, row names should be sample ID's
-#'  (these should be able to be matched to Env file but don't need to be in the
-#'  same order)
-#' @param filtered_env_data name to use for the outputed filtered env file
+#' @param enviroment_data Character string. Path to environmental data file. Should contain 
+#'   columns "avc_code", "avc", "pH", "eastings", "northings". Row names should be sample IDs
+#'   that match the OTU table.
+#' @param filtered_env_data Character string. Path where the filtered environmental data will be saved.
 #' 
-#' @return None
+#' @return None. The function writes the filtered data to the specified output file.
+#' 
 #' @examples
 #' # Create directory for supplementary SQL tables
-#' #dir.create(
-#' #  'Supplementary/Tables_in_SQL,
-#' #  showWarnings = FALSE, 
-#' #  recursive = TRUE
-#' #)
+#' dir.create("output/Supplementary/Tables_in_SQL", showWarnings = FALSE, recursive = TRUE)
 #' 
 #' # Clean environmental metadata
-#' #clean_environmental_metadata(
-#' #  params$Env_file,
-#' #  paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/Env.csv")
-#' #)
+#' clean_environmental_metadata(
+#'   "data/environmental_data.csv",
+#'   "output/Supplementary/Tables_in_SQL/Env.csv"
+#' )
 #' 
 #' @note
 #' Original code provided output variable: Env_for_SQL
 #' @export
-clean_environmental_metadata <- function(enviroment_data,  filtered_env_data){
+clean_environmental_metadata <- function(enviroment_data, filtered_env_data) {
+    # Read the environmental data
+    Env <- data.table::fread(enviroment_data)
 
-    # This function used to filter out location data, not sure why, seems needed.
-    Env=data.table::fread(enviroment_data)
-
-    Env_for_SQL=Env[-which(is.na(Env$avc_code)),]
-                                        # Rearrange slightly so suitable for inserting into
-                                        # SQL- e.g make sample a column(rather than rownames)
-                                        # and change "pH" colname to "ph" as standard
-                                        # postgres field names without double quotes have to be
-                                        # lower case
-                                        # https://deeplearning.lipingyang.org/2017/01/07/
-                                        # postgresql-column-names-of-a-table-are-case-sensitive/
+    # Remove rows with missing AVC codes
+    Env_for_SQL <- Env[-which(is.na(Env$avc_code)), ]
+    
+    # Write filtered data to file
     data.table::fwrite(Env_for_SQL, filtered_env_data)
 }
 
 ## Step 1.2
 #' Clean up the OTU table
 #'
-#' @description
-#' Clean up the OTU table.
+#' @description Filters and normalizes an OTU (Operational Taxonomic Unit) table.
 #' 
-#' @details
-#' Filters out rows (OTU) by occupancy level
-#' - Takes in Data from a raw OTU table
-#' - Filters based on occupancy level
+#' @details The function:
+#'   1. Removes samples with low read counts (< 5000)
+#'   2. Filters out OTUs that don't meet the specified occupancy threshold
+#'   3. Normalizes the OTU table using total sum scaling
 #'
-#' @param OTU_file pre-processed OTU table
-#' @param filtered_OTU_file name to use for the output file (filtered OTU table)
-#' @param  OTU_table_occupancy_filter occupancy level to filter the table by
+#' @param OTU_file Character string. Path to the pre-processed OTU table file.
+#' @param filtered_OTU_file Character string. Path where the filtered OTU table will be saved.
+#' @param OTU_table_occupancy_filter Integer. Minimum number of samples an OTU must be present 
+#'   in to be retained. Default is 30.
 #' 
-#' @return None
+#' @return None. The function writes the filtered and normalized OTU table to the specified output file.
+#'
 #' @examples
-#' # Create directory for supplementary SQL tables
-#' #Output_dir_with_occ = 'files'
-#' #dir.create(
-#' #  paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL"),
-#' #  showWarnings = FALSE, 
-#' #  recursive = TRUE
-#' #)
-#' 
-#' # Clean OTU table
-#' #clean_OTU_table(
-#' #  'OTU_tab_file',
-#' #  paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/OTU_abund.csv")
-#' #)
+#' # Clean OTU table with default occupancy filter (30)
+#' clean_OTU_table(
+#'   "data/raw_otu_table.csv",
+#'   "output/Supplementary/Tables_in_SQL/OTU_abund.csv"
+#' )
 #'
-#' @note
-#' Original code provided output variable:  OTU_tab_sub_occ_dec
+#' # With custom occupancy filter
+#' clean_OTU_table(
+#'   "data/raw_otu_table.csv",
+#'   "output/Supplementary/Tables_in_SQL/OTU_abund.csv",
+#'   OTU_table_occupancy_filter = 20
+#' )
+#'
 #' @export
-clean_OTU_table <- function( OTU_file, filtered_OTU_file, OTU_table_occupancy_filter=30){
+clean_OTU_table <- function(OTU_file, filtered_OTU_file, OTU_table_occupancy_filter = 30) {
+    # Read in OTU table
+    OTU_tab <- data.frame(data.table::fread(OTU_file), row.names = 1, check.names = FALSE)
     
-                                        #read in OTU_tab
-    OTU_tab=data.frame(data.table::fread( OTU_file),row.names=1,check.names=FALSE)
-                                        #remove samples from OTU tab with reads less than 5000
-    OTU_tab_sub<-OTU_tab[rowSums(OTU_tab)>5000,]
-                                        # Convert OTU_tab_sub to presence and absence in order to
-                                        # filter OTU_tab by OTU occupancy (i.e how many
-                                        # samples an OTU is present in)
-    OTU_tab_sub_pa=(OTU_tab_sub !=0)*1
-                                        #remove taxa that do not meet occupancy threshold set in
-                                        # OTU_table_occupancy_filter
-    OTU_tab_sub_occ<-OTU_tab_sub[,which(colSums(OTU_tab_sub_pa)>=OTU_table_occupancy_filter)]
-                                        #normalise OTU tab
-    OTU_tab_sub_occ_dec=vegan::decostand(OTU_tab_sub_occ,method="total")
-                                        #Write OTU_tab_sub to file
-                                        #first make new subdir in our outdir(if doesnt already
-                                        # exist) tO specify these are the tables that will be
-                                        # stored in SQL 
+    # Remove samples with reads less than 5000
+    OTU_tab_sub <- OTU_tab[rowSums(OTU_tab) > 5000, ]
+    
+    # Convert to presence/absence to filter by occupancy
+    OTU_tab_sub_pa <- (OTU_tab_sub != 0) * 1
+    
+    # Remove taxa that do not meet occupancy threshold
+    OTU_tab_sub_occ <- OTU_tab_sub[, which(colSums(OTU_tab_sub_pa) >= OTU_table_occupancy_filter)]
+    
+    # Normalize OTU table using total sum scaling
+    OTU_tab_sub_occ_dec <- vegan::decostand(OTU_tab_sub_occ, method = "total")
+    
+    # Format and write filtered OTU table
     OTU_out <- data.table::data.table(rownames(OTU_tab_sub_occ_dec), OTU_tab_sub_occ_dec)
     data.table::setnames(OTU_out, 1, "ID")
-    data.table::fwrite(OTU_out,filtered_OTU_file)
+    data.table::fwrite(OTU_out, filtered_OTU_file)
 }
 
 ## Step 1.3
-#' Prepare abundance_stats table
+#' Generate abundance statistics for OTUs
 #'
-#' @description
-#' Prepare abundance_stats table.
+#' @description Calculates summary statistics for each OTU to characterize its abundance and occupancy.
 #' 
-#' @details
-#' Get individual OTU stats to summarise abundance (rank) and occupancy
-#' (percentage and rank), these stats will form a table in the database (added to
-#' DB in step 2). In this code chunk saved to r
-#' params$Output_dir /Supplementary/Tables_in_SQL subfolder for reference.
+#' @details The function computes:
+#'   1. Total abundance of each OTU across all samples
+#'   2. Abundance rank (where ties are given the same rank)
+#'   3. Occupancy (number of samples an OTU is present in)
+#'   4. Occupancy proportion as a percentage with rank
 #'
-#' @param filtered_OTU_file filtered OTU table (created in step 1.2)
-#' @param abundance_stats_file name to use for the output file, filtered abundace stats
+#' @param filtered_OTU_file Character string. Path to the filtered OTU table file (created in step 1.2).
+#' @param abundance_stats_file Character string. Path where the abundance statistics will be saved.
 #' 
-#' @return None
+#' @return None. The function writes the abundance statistics to the specified output file.
 #'
 #' @examples
-#' # Requires OTU_tab_sub_occ_dec variable created in another function
-#' # Get abundance statistics
-#' #Output_dir_with_occ = 'files'
-#' #get_abundance_stats(
-#' #  paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/OTU_abund.csv"),
-#' #  paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/abundance_stats.csv")
-#' #)
+#' # Generate abundance statistics
+#' get_abundance_stats(
+#'   "output/Supplementary/Tables_in_SQL/OTU_abund.csv",
+#'   "output/Supplementary/Tables_in_SQL/abundance_stats.csv"
+#' )
 #'
 #' @note
 #' Original code provided output variable:  abundance_stats
 #' @export
-get_abundance_stats <- function(filtered_OTU_file, abundance_stats_file){
-
-                                        # get the otu table
-    OTU_tab_sub_occ_dec = data.frame(data.table::fread(filtered_OTU_file),row.names=1,check.names=FALSE)
+get_abundance_stats <- function(filtered_OTU_file, abundance_stats_file) {
+    # Read the filtered OTU table
+    OTU_tab_sub_occ_dec <- data.frame(data.table::fread(filtered_OTU_file), row.names = 1, check.names = FALSE)
     
-                                        #lets get OTUs total abundance across all remaining samples
-    abundance_stats=data.frame(hit=colnames(OTU_tab_sub_occ_dec),abundance=colSums(OTU_tab_sub_occ_dec))
-                                        # get OTU abundance rank no.. where there are ties both values
-                                        # get the same rank i.e if two values that would be ranked 6
-                                        # and 7 are the same they will both be ranked 6
-                                        # contextualise the number by referencing the total
-                                        # amount of OTU/ASVs
-    abundance_stats$abundance_rank=paste(rank(-abundance_stats$abundance,ties.method="min"),ncol(OTU_tab_sub_occ_dec),sep="/")
-                                        #get presence absence again for remaining taxa 
-    OTU_tab_sub_occ_dec_pa=(OTU_tab_sub_occ_dec !=0)*1
-                                        #get occupancy by summing cols using presence absense version of abundance table
-    abundance_stats$occupancy=colSums(OTU_tab_sub_occ_dec_pa)
-                                        #get occupancy as a percentage and add rank
-    abundance_stats$occupancy_proportion=paste(round(abundance_stats$occupancy/nrow(OTU_tab_sub_occ_dec_pa)*100,2),"% (Rank: ",rank(-round(abundance_stats$occupancy/nrow(OTU_tab_sub_occ_dec_pa)*100,2),ties.method="min"),"/",ncol(OTU_tab_sub_occ_dec_pa),")",sep="")
-                                        #remove unnecessary columns
-    abundance_stats=abundance_stats[,-c(2,4)]
-    data.table::fwrite(abundance_stats,abundance_stats_file,row.names=FALSE)
+    # Get total abundance for each OTU
+    abundance_stats <- data.frame(
+        hit = colnames(OTU_tab_sub_occ_dec),
+        abundance = colSums(OTU_tab_sub_occ_dec)
+    )
+    
+    # Calculate abundance rank (ties get the same rank)
+    abundance_stats$abundance_rank <- paste(
+        rank(-abundance_stats$abundance, ties.method = "min"),
+        ncol(OTU_tab_sub_occ_dec),
+        sep = "/"
+    )
+    
+    # Convert to presence/absence matrix
+    OTU_tab_sub_occ_dec_pa <- (OTU_tab_sub_occ_dec != 0) * 1
+    
+    # Calculate occupancy
+    abundance_stats$occupancy <- colSums(OTU_tab_sub_occ_dec_pa)
+    
+    # Calculate occupancy as percentage with rank
+    abundance_stats$occupancy_proportion <- paste(
+        round(abundance_stats$occupancy / nrow(OTU_tab_sub_occ_dec_pa) * 100, 2),
+        "% (Rank: ",
+        rank(-round(abundance_stats$occupancy / nrow(OTU_tab_sub_occ_dec_pa) * 100, 2), ties.method = "min"),
+        "/",
+        ncol(OTU_tab_sub_occ_dec_pa),
+        ")",
+        sep = ""
+    )
+    
+    # Remove unnecessary columns
+    abundance_stats <- abundance_stats[, -c(2, 4)]
+    
+    # Write to file
+    data.table::fwrite(abundance_stats, abundance_stats_file, row.names = FALSE)
 }
 
 ## Step 1.4
 #' Prepare taxonomy table
 #'
-#' @description
-#' Prepare abundance_stats table.
+#' @description Processes and formats taxonomy data for the taxonomic explorer app.
 #' 
-#' @details
-#' Read in taxonomy, split taxonomic fields by ";"and subset to only include OTUs
-#' that meet occupancy threshold ,save to r params$Output_dir/Supplementary/Tables_in_SQL
-#' subfolder for reference.
+#' @details The function:
+#'   1. Reads in the taxonomy file
+#'   2. Splits taxonomic classifications by ";" into separate columns
+#'   3. Filters to include only OTUs that meet the occupancy threshold
+#'   4. Formats taxonomy information by removing prefixes
 #'
-#' @param OTU_abund_filter_file filtered OTU table created in step 1.2 for input
-#' @param taxonomy_file pre-processed taxonomy table to use as input
-#' @param filtered_taxonomy_file name for output file, which is a filtered taxonomy table
+#' @param taxonomy_file Character string. Path to the pre-processed taxonomy file.
+#' @param filtered_taxonomy_file Character string. Path where the filtered taxonomy data will be saved.
+#' @param OTU_abund_filter_file Character string. Path to the filtered OTU table file to use for filtering.
 #' 
-#' @return None
+#' @return None. The function writes the filtered taxonomy data to the specified output file.
 #'
 #' @examples
 #' # Prepare taxonomy table
-#' #Output_dir_with_occ = 'files'
-#' #prepair_taxonomy_table(
-#' #  OTU_abund_filter_file = paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/OTU_abund.csv")#,
-#'  # input_file = 'Tax_file',
-#'  # output_file = paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/Taxonomy.csv")
-#' #)
+#' prepair_taxonomy_table(
+#'   "data/raw_taxonomy.csv",
+#'   "output/Supplementary/Tables_in_SQL/Taxonomy.csv",
+#'   "output/Supplementary/Tables_in_SQL/OTU_abund.csv"
+#' )
 #'
 #' @note
 #' Original code provided output variable:
 #' Taxonomy_filt (Taxonomy_Sort is now written as extra steps were needed.)
 #' 
 #' @export
-prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_abund_filter_file){
+prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_abund_filter_file) {
+    # Read taxonomy file
     Taxonomy <- data.table::fread(taxonomy_file)
-                                        # data is two columns (OTU and taxa)
-                                        # Split into multiple taxonomy columns (taxonomy_1, etc)
-    Taxonomy<-splitstackshape::cSplit(indt=Taxonomy,splitCols=2,sep=";")
-                                        # rename taxonomy columns to correct ¿levels?
-    colnames(Taxonomy)=c("hit","Kingdom","Phylum","Class","Order","Family","Genus","Species")
-    row.names(Taxonomy)=Taxonomy$hit
-                                        #filter to match OTU table
-    OTU_abund_filter <- colnames(data.table::fread(OTU_abund_filter_file)) 
-    Taxonomy_filt <- Taxonomy[hit %in% OTU_abund_filter]
-    Taxonomy_Sort <- Taxonomy_filt[ order(row.names(Taxonomy_filt)),]
-    Taxonomy_Sort <- Taxonomy_Sort[, lapply(.SD, function(x) sub(".*__", "", x))]
-    Taxonomy_Sort[is.na(Taxonomy_Sort)] <- ""  
     
-    data.table::fwrite(Taxonomy_Sort,filtered_taxonomy_file)
+    # Split taxonomic classifications into separate columns
+    Taxonomy <- splitstackshape::cSplit(indt = Taxonomy, splitCols = 2, sep = ";")
+    
+    # Rename taxonomy columns to the correct levels
+    colnames(Taxonomy) <- c("hit", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+    row.names(Taxonomy) <- Taxonomy$hit
+    
+    # Filter to match OTU table
+    OTU_abund_filter <- colnames(data.table::fread(OTU_abund_filter_file))
+    Taxonomy_filt <- Taxonomy[hit %in% OTU_abund_filter]
+    
+    # Sort and format taxonomy
+    Taxonomy_Sort <- Taxonomy_filt[order(row.names(Taxonomy_filt)), ]
+    Taxonomy_Sort <- Taxonomy_Sort[, lapply(.SD, function(x) sub(".*__", "", x))]
+    Taxonomy_Sort[is.na(Taxonomy_Sort)] <- ""
+    
+    # Write to file
+    data.table::fwrite(Taxonomy_Sort, filtered_taxonomy_file)
 }
 
-
-#####################################################################
-#####################################################################
-
-### ALL DB STUFF AND THEN APP NOW
-
-#####################################################################
-#####################################################################
-
-## Steps 2.1, 2.2, and 2.3 have all been replaced with a single "Step 2"
-## Step 2.1 used to setup the SQL db
-## Step 2.2 modified the table name based on the abundance cut
-## Step 2.3 populated the tables
-## The single step 2 now creates the SQLite files and populates them in
-## one function.
-
-
-## Step 2
-#' Put the filtered OTU, taxonomy, and abundance files into RSQLite files
+#' Create SQLite database tables for OTU, taxonomy, and abundance data
 #'
-#' @description
-#' Put the filtered OTU, taxonomy, and abundance files into RSQLite files.
+#' @description Generates SQLite database files and tables to store the filtered OTU, 
+#'   taxonomy, and abundance data for the app backend.
 #' 
-#' @details
-#' Reads in the filtered OTU, taxonomy, and abundance files, and creates corresponding
-#' tables in an RSQLite file
+#' @details The function:
+#'   1. Creates separate SQLite database files for abundance, taxonomy, OTU, and map data
+#'   2. Defines appropriate schema for each table
+#'   3. Populates the tables with the filtered data
 #'
-#' @param abundance_csv filtered OTU table
-#' @param taxonomy_csv filtered abundance table
-#' @param otu_csv filtered taxonomy table
+#' @param filtered_abundance_csv Character string. Path to the filtered abundance statistics file.
+#' @param filtered_taxonomy_csv Character string. Path to the filtered taxonomy file.
+#' @param filtered_otu_csv Character string. Path to the filtered OTU table file.
 #' 
-#' @return None
+#' @return None. The function creates SQLite database files with the appropriate tables.
 #'
 #' @examples
-#' # Prepare taxonomy table
-#' #Output_dir_with_occ = 'files'
-#' #prepair_taxonomy_table(
-#' #  OTU_abund_filter_file = paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/OTU_abund.csv"),
-#'#   input_file = 'Tax_file.csv',
-#' #  output_file = paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/Taxonomy.csv")
-#' #)
-#'
-#' @note
-#'
-#' format_otu_for_Rsqlite(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv)
-#' 
+#' format_otu_for_Rsqlite(
+#'   "output/Supplementary/Tables_in_SQL/abundance_stats.csv",
+#'   "output/Supplementary/Tables_in_SQL/Taxonomy.csv",
+#'   "output/Supplementary/Tables_in_SQL/OTU_abund.csv"
+#' )
 #' 
 #' @export
-format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv){
-
+format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv) {
     print("Debug: Load files")
     
+    # Read the input files
     abundance_csv <- read.csv(filtered_abundance_csv)
     taxonomy_csv <- read.csv(filtered_taxonomy_csv)
     otu_csv <- read.csv(filtered_otu_csv)
     
-    ## Lets try not splitting to begin with
-    ## Current SQL command is:
-    ## CREATE TABLE IF NOT EXISTS abund_tables.<prefix>_abund_2(hit character varying(30), "<column names each followed by '" numeric, "'>" numeric, CONSTRAINT '<prefix>_abund_2_pkey PRIMARY KEY("hit"))'
-    ## Lets get rid of the prefix and double tables to:
-    ## CREATE TABLE IF NOT EXISTS abund_tables(hit character varying(30), "<column names each followed by '" numeric, "'>" numeric, CONSTRAINT '<prefix>_abund_2_pkey PRIMARY KEY("hit"))'
-
-    ## Lets use sprintf to get better formatting of the string.
-    ## Fails with "CONSTRAINT", not sure on need, so removing.
-
-
-    sql_command <- sprintf("create table if not exists abund_table (hit character varying(30), %s numeric, primary key (hit))",
-                                     paste(colnames(abundance_csv)[-1], collapse=' numeric, ')   #colnames
-                           )
-
-    ## Create table, abundance
+    # Create abundance table
+    sql_command <- sprintf(
+        "create table if not exists abund_table (hit character varying(30), %s numeric, primary key (hit))",
+        paste(colnames(abundance_csv)[-1], collapse = ' numeric, ')
+    )
+    
+    # Connect to abundance database and create table
     abundance_db <- DBI::dbConnect(RSQLite::SQLite(), "abundance_db.sqlite")
     DBI::dbExecute(conn = abundance_db, statement = sql_command)
-    ## Fill table
-    DBI::dbWriteTable(abundance_db, "abund_table", abundance_csv, append = TRUE, row.names = FALSE)
-    ## Disconnect, best practise?
-    DBI::dbDisconnect(abundance_db)
-
-
-    ## Create table, taxonomy
-
-    ## "order" is an SQL command so need to escape it in quotes, easier to escape all
-    ## fields in quotes
     
-    sql_command_taxonomy <- sprintf("create table taxonomy_table (hit character varying (30), %s character varying (250), primary key (hit))",
-                                    paste('"',colnames(taxonomy_csv)[-1],'"',
-                                          collapse=' charater varying(250),',
-                                          sep='')
-                                    )
-
-    ## Create table, taxonomy
+    # Fill table and disconnect
+    DBI::dbWriteTable(abundance_db, "abund_table", abundance_csv, append = TRUE, row.names = FALSE)
+    DBI::dbDisconnect(abundance_db)
+    
+    # Create taxonomy table
+    sql_command_taxonomy <- sprintf(
+        "create table taxonomy_table (hit character varying (30), %s character varying (250), primary key (hit))",
+        paste(
+            '"', colnames(taxonomy_csv)[-1], '"',
+            collapse = ' charater varying(250),',
+            sep = ''
+        )
+    )
+    
+    # Connect to taxonomy database and create table
     taxonomy_db <- DBI::dbConnect(RSQLite::SQLite(), "taxonomy_db.sqlite")
     DBI::dbExecute(conn = taxonomy_db, statement = sql_command_taxonomy)
-    ## Fill table
+    
+    # Fill table and disconnect
     DBI::dbWriteTable(taxonomy_db, "taxonomy_table", taxonomy_csv, append = TRUE, row.names = FALSE)
-    ## Disconnect, best practise?
     DBI::dbDisconnect(taxonomy_db)
-
-
-
-    ## OTU table has too many columns for SQL/SQLite so need to transpose
-    transpose_otu_csv = t(otu_csv)
-    ## convert back to a data.frame
-    otu_csv = data.frame(hit=row.names(transpose_otu_csv), transpose_otu_csv, check.names=FALSE)
-
-    ## Create OTU table
-    sql_command_otu <- sprintf("create table otu_table (hit character varying (30), %s character varying (30), primary key (hit))",
-                                    paste('"',colnames(otu_csv)[-1],'"',
-                                          collapse=' charater varying(250),',
-                                          sep='')
-                                    )
-
-    ## Create table, otu
+    
+    # OTU table preparation (transpose due to column limit)
+    transpose_otu_csv <- t(otu_csv)
+    otu_csv <- data.frame(hit = row.names(transpose_otu_csv), transpose_otu_csv, check.names = FALSE)
+    
+    # Create OTU table
+    sql_command_otu <- sprintf(
+        "create table otu_table (hit character varying (30), %s character varying (30), primary key (hit))",
+        paste(
+            '"', colnames(otu_csv)[-1], '"',
+            collapse = ' charater varying(250),',
+            sep = ''
+        )
+    )
+    
+    # Connect to OTU database and create table
     otu_db <- DBI::dbConnect(RSQLite::SQLite(), "otu_db.sqlite")
     DBI::dbExecute(conn = otu_db, statement = sql_command_otu)
-    ## Fill table
+    
+    # Fill table and disconnect
     DBI::dbWriteTable(otu_db, "otu_table", otu_csv, append = TRUE, row.names = FALSE)
-    ## Disconnect, best practise?
     DBI::dbDisconnect(otu_db)
     
-
-    ## Create maps table
-    ## Postgresql use bytea as the data type, but sqlite does not have this
-    ## equvilant is "blob" so changing bytea to blob for this.
-    ## https://jfaganuk.github.io/2015/01/12/storing-r-objects-in-sqlite-tables/
-    sql_command_maps <- sprintf("create table maps_table (otu_name character varying (30), map_object blob, primary key (otu_name))")
-
-    ## Create table, maps
+    # Create maps table
+    sql_command_maps <- "create table maps_table (otu_name character varying (30), map_object blob, primary key (otu_name))"
+    
+    # Connect to maps database and create table
     maps_db <- DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
     DBI::dbExecute(conn = maps_db, statement = sql_command_maps)
-
-    #Fill maps later
-
-    ## Fill table
-    ## DBI::dbWriteTable(maps_db, "maps_table", maps_csv, append = TRUE, row.names = FALSE)
-    ## Disconnect, best practise?
     DBI::dbDisconnect(maps_db)
-
-    ## will fill maps table in step 3 using save_otu_map function
-   
+    
+    # Maps table will be filled in step 3 using save_otu_map function
 }
-
-
 
 ## Step 3 Make map objects for DB
 
 ### 3.1 Map preparation
 
-# **r**
-# ```{R map prep, eval=FALSE}
-
-
-
-## Step 3.1 Map preperation
-#' Put the filtered OTU, taxonomy, and abundance files into RSQLite files
+#' Prepare map data for visualization
 #'
-#' @description
-#' Step 3 Make map objects for DB.
+#' @description Prepares UK map data for use in OTU distribution visualization.
 #' 
-#' @details
-#' Step 3 Make map objects for DB
+#' @details The function:
+#'   1. Reads UK coastline shape files
+#'   2. Sets the correct coordinate reference system
+#'   3. Creates an interpolation grid based on the UK polygon bounding box
+#'   4. Saves the processed spatial objects as shapefiles
 #'
-#' @param ukcoast_poly shape file of uk polygon
-#' @param ukcoast_line shape file of uk outline
-#' @param uk_poly_converted shape file of uk polygon
-#' @param uk_line_converted shape file of uk outline
-#' @param uk_grid_converted shape file of uk outline
+#' @param ukcoast_poly Character string. Path to UK polygon shapefile.
+#' @param ukcoast_line Character string. Path to UK coastline shapefile.
+#' @param uk_poly_converted Character string. Path where the processed UK polygon will be saved.
+#' @param uk_line_converted Character string. Path where the processed UK coastline will be saved.
+#' @param uk_grid_converted Character string. Path where the interpolation grid will be saved.
 #'
-#' @return None
+#' @return None. The function saves the processed spatial objects to the specified output files.
 #'
 #' @examples
-#' # Prepare map
-#' #map_prep(
-#' #  otu_table = "supplementary/Tables_in_SQL/OTU_abund.csv",
-#' #  enviroment_data='country_side_survey/CS2007_Env_pH_AVC.csv'
-#' #  ukcoast_poly = 'ukcoast1.shp',
-#' #  ukcoast_line = 'ukcoast_line.shp'
-#' #)
+#' map_prep(
+#'   "data/map/ukcoast1.shp",
+#'   "data/map/ukcoast_line.shp",
+#'   "output/map/uk_poly.shp",
+#'   "output/map/uk_line.shp",
+#'   "output/map/uk_grid.shp"
+#' )
 #' 
-#' @note
-#'
-#' Running this as separate function, but perhaps this should be the start of another function?
-#' 
-#' abund_table is called by env name: OTU_tab_sub_occ_dec
-#' looks like this sets up a series of functions and variables to be used in a latter step
-#' to make a db. This last part maybe much harder to split up.   Need to focus on first
-#' parts and leave this until later. Perhaps it would be better to move to SQLite????
-#' Perhaps some of the functions to setup, like grid bit
-#'
 #' @export
 map_prep <- function(ukcoast_poly,
                      ukcoast_line,
                      uk_poly_converted,
                      uk_line_converted,
-                     uk_grid_converted){
+                     uk_grid_converted) {
     
-    ## Explicitly define CRS
+    # Explicitly define coordinate reference systems
     ukgrid <- sf::st_crs(27700)  # British National Grid
-    latlong <- sf::st_crs(4326) # WGS84 Lat/Long
+    latlong <- sf::st_crs(4326)  # WGS84 Lat/Long
     
-    ## Read shapefiles, specifying CRS if needed
+    # Read UK polygon shapefile
     uk_poly <- sf::st_read(ukcoast_poly)
     uk_poly <- sf::st_set_crs(uk_poly, latlong)
     uk_poly <- sf::st_transform(uk_poly, ukgrid)
     
+    # Read UK coastline shapefile
     uk_line <- sf::st_read(ukcoast_line)
     uk_line <- sf::st_set_crs(uk_line, latlong)
     uk_line <- sf::st_transform(uk_line, ukgrid)
   
-    ## Create interpolation grid based on UK polygon bounding box
+    # Create interpolation grid based on UK polygon bounding box
     uk_poly_bbox <- sf::st_bbox(uk_poly)
     x_range <- c(uk_poly_bbox["xmin"], uk_poly_bbox["xmax"])
     y_range <- c(uk_poly_bbox["ymin"], uk_poly_bbox["ymax"])
   
-    ## Create grid for interpolation
+    # Create grid for interpolation
     grd <- expand.grid(
         x = seq(from = x_range[1], to = x_range[2], by = 5000),
         y = seq(from = y_range[1], to = y_range[2], by = 5000)
     )
   
-    ## Convert grid to SpatVector
+    # Convert grid to SpatVector
     grd_vect <- terra::vect(grd, geom = c("x", "y"), crs = ukgrid$input)
   
-    ## Optional: Visualization
+    # Optional: Visualization
     terra::plot(terra::vect(uk_poly))
     terra::plot(terra::vect(uk_line), add = TRUE, col = "red")
     terra::plot(grd_vect, add = TRUE, col = "blue", pch = ".")
     
-    ## Return list of spatial objects
-#    return(list(
-#        uk_poly = uk.poly, 
-#        uk_line = uk.line, 
-#        grid = grd_vect
-#    ))
-
+    # Save processed spatial objects
     sf::st_write(uk_poly, uk_poly_converted, driver = "ESRI Shapefile", overwrite = TRUE)
     sf::st_write(uk_line, uk_line_converted, driver = "ESRI Shapefile", overwrite = TRUE)
     terra::writeVector(grd_vect, uk_grid_converted)
@@ -572,157 +450,165 @@ map_prep <- function(ukcoast_poly,
 
 
 ### 3.2 Generate maps per OTU
-#' Generate maps per OTU
+#' Generate map for an individual OTU
 #' 
-#' @description
-#' creates map object representing an individual.
-#' OTUs/ ASVs geographical distribution.
+#' @description Creates a map object representing the geographical distribution of an individual OTU/ASV.
 #' 
-#' @details
-#' **save_otu_map** function  creates map object representing an individual
-#' OTUs/ ASVs geographical distribution this is saved to both the specified
-#' outputdir and database. Pngs of plotted map objects can also be saved to
-#' outdir for reference.
+#' @details The function:
+#'   1. Extracts abundance data for the specified OTU
+#'   2. Performs kriging interpolation to predict values across the UK
+#'   3. Clips the interpolation to the UK coastline
+#'   4. Saves the map object to the maps database
+#'   5. Optionally generates a PNG visualization
 #'
-#' @param OTU_name Not sure what this is.
-#' @param OTU_table filtered table
-#' @param Env_table Env_sub #created in map_prep
-#' @param Grid created in map_prep
-#' @param UK_poly uk.poly #created in map_prep
-#' @param UK_line uk.line #created in map_prep
-#' @param Conn SQLdb, removed so correct
-#' @param Schema_table_prefix removed for time being
-#' @param Output_dir not used #abandoned in favour of dir in string
-#' @param Make_png flag
-#' #@param otu_table filtered OTU table (created in step 1.2)
-#' #@param ukcoast_poly shape file of uk polygon
-#' #@param ukcoast_line shape file of uk outline
+#' @param OTU_name Character string. Name of the OTU to create a map for.
+#' @param OTU_table_in Character string. Path to the filtered OTU table.
+#' @param environment_data Character string. Path to the environmental data file.
+#' @param Grid_file Character string. Path to the interpolation grid shapefile.
+#' @param UK_poly_file Character string. Path to the UK polygon shapefile.
+#' @param UK_line_file Character string. Path to the UK coastline shapefile.
+#' @param Make_png Logical. Whether to generate a PNG visualization. Default is FALSE.
 #'
-#' @return None
+#' @return None. The function saves the map object to the maps database and optionally 
+#'   generates a PNG visualization.
 #'
 #' @examples
-#'
-#' # Prepare map
-#' #map_prep(
-#' #  otu_table = "/Supplementary/Tables_in_SQL/OTU_abund.csv",
-#' #  ukcoast_poly = 'ukcoast1.shp',
-#' #  ukcoast_line = 'ukcoast_line.shp'
-#' #)
-#' 
-#' @note
-#' I think this might need merging with another function, can't remember
-#' which or why
+#' save_otu_map(
+#'   OTU_name = "OTU1",
+#'   OTU_table_in = "output/Supplementary/Tables_in_SQL/OTU_abund.csv",
+#'   environment_data = "output/Supplementary/Tables_in_SQL/Env.csv",
+#'   Grid_file = "output/map/uk_grid.shp",
+#'   UK_poly_file = "output/map/uk_poly.shp",
+#'   UK_line_file = "output/map/uk_line.shp",
+#'   Make_png = TRUE
+#' )
 #'
 #' @export
-save_otu_map <- function(OTU_name,  # Name of OTU we want to create map for.
-                         OTU_table_in, # filtered table
-                         environment_data, # Env_table_in#, # Env_sub # created in map_prep
-                         Grid_file,      # created in map_prep
-                         UK_poly_file,   # uk.poly # created in map_prep
-                         UK_line_file,   # uk.line # created in map_prep
-                         Make_png = FALSE #Does not work with terra <1.8.5
-                         ) {
+save_otu_map <- function(OTU_name,
+                         OTU_table_in,
+                         environment_data,
+                         Grid_file,
+                         UK_poly_file,
+                         UK_line_file,
+                         Make_png = FALSE) {
 
-  # Read in OTU and env
-  env_table = data.table::fread(environment_data)
-  otu_table = data.table::fread(OTU_table_in)
-  env_table = env_table[ID %in% otu_table$ID]
+  # Read input data
+  env_table <- data.table::fread(environment_data)
+  otu_table <- data.table::fread(OTU_table_in)
+  env_table <- env_table[ID %in% otu_table$ID]
 
-  OTU_table = data.frame(otu_table, row.names = 1, check.names = FALSE)
-  env_data = data.frame(env_table, row.names = 1, check.names = FALSE)
+  # Convert to data frames
+  OTU_table <- data.frame(otu_table, row.names = 1, check.names = FALSE)
+  env_data <- data.frame(env_table, row.names = 1, check.names = FALSE)
 
-  # First lets get env in the same order as OTU table
-  Env_sub = env_data[row.names(OTU_table), ]
+  # Ensure env data is in the same order as OTU table
+  Env_sub <- env_data[row.names(OTU_table), ]
 
-  # OTU abundance extraction
-  otu_abund = OTU_table[, OTU_name, drop = FALSE]
-  dat = cbind(env_data[, c('E_2_FIG_10KM', 'N_2_FIG_10KM')], otu_abund)
-  colnames(dat)[3] = "OTU"
-  dat = dat[complete.cases(dat), ]
+  # Extract OTU abundance data
+  otu_abund <- OTU_table[, OTU_name, drop = FALSE]
+  dat <- cbind(env_data[, c('E_2_FIG_10KM', 'N_2_FIG_10KM')], otu_abund)
+  colnames(dat)[3] <- "OTU"
+  dat <- dat[complete.cases(dat), ]
 
   # Read spatial data
-  Grid = sf::st_read(Grid_file)
-  UK_poly = sf::st_read(UK_poly_file)
-  UK_line = sf::st_read(UK_line_file)
+  Grid <- sf::st_read(Grid_file)
+  UK_poly <- sf::st_read(UK_poly_file)
+  UK_line <- sf::st_read(UK_line_file)
 
-  # Convert the data to an sf object
-  dat_sf = sf::st_as_sf(dat, coords = c("E_2_FIG_10KM", "N_2_FIG_10KM"), crs = 27700)
+  # Convert data to sf object
+  dat_sf <- sf::st_as_sf(dat, coords = c("E_2_FIG_10KM", "N_2_FIG_10KM"), crs = 27700)
   
   # Perform kriging interpolation
-  spc.idw = gstat::krige(OTU ~ 1, dat_sf, Grid)
-  ukgrid = 27700
-  spc.idw_sf = sf::st_as_sf(spc.idw)
-  sf::st_crs(spc.idw_sf) = ukgrid
+  spc.idw <- gstat::krige(OTU ~ 1, dat_sf, Grid)
+  ukgrid <- 27700
+  spc.idw_sf <- sf::st_as_sf(spc.idw)
+  sf::st_crs(spc.idw_sf) <- ukgrid
   
   # Clip interpolation to UK coastline
-  overlay.idw = sf::st_intersection(spc.idw_sf, UK_poly)
-  newmap = overlay.idw
+  overlay.idw <- sf::st_intersection(spc.idw_sf, UK_poly)
+  newmap <- overlay.idw
 
-  # Define break intervals
-  minv = min(otu_abund)
-  maxv = max(otu_abund)
-  at = c(minv, signif(maxv / 256, 1), signif(maxv / 128, 1), signif(maxv / 64, 1), signif(maxv / 32, 1), 
-          signif(maxv / 16, 1), signif(maxv / 8, 1), signif(maxv / 4, 2), signif(maxv / 2, 2), maxv)
+  # Define break intervals for visualization
+  minv <- min(otu_abund)
+  maxv <- max(otu_abund)
+  at <- c(
+    minv, 
+    signif(maxv / 256, 1), 
+    signif(maxv / 128, 1), 
+    signif(maxv / 64, 1), 
+    signif(maxv / 32, 1), 
+    signif(maxv / 16, 1), 
+    signif(maxv / 8, 1), 
+    signif(maxv / 4, 2), 
+    signif(maxv / 2, 2), 
+    maxv
+  )
 
-  # Save map object to output directory
-    mapandinfo = cbind(newmap, at)
+  # Combine map and interval data
+  mapandinfo <- cbind(newmap, at)
 
-    if (Make_png == TRUE){
-        save(mapandinfo, file = paste0('data/02_processed_data/per_otu_map_data/', OTU_name, ".RData"))
-    }
-    ser_mapandinfo = serialize(mapandinfo, connection = NULL, ascii = FALSE)
+  # Save map data locally if requested
+  if (Make_png) {
+    save(mapandinfo, file = paste0('data/02_processed_data/per_otu_map_data/', OTU_name, ".RData"))
+  }
+  
+  # Serialize map data for database storage
+  ser_mapandinfo <- serialize(mapandinfo, connection = NULL, ascii = FALSE)
 
-    maps_db = DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite", synchronous = "normal")
-    DBI::dbExecute(maps_db, "PRAGMA busy_timeout = 5000;")
+  # Connect to maps database
+  maps_db <- DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite", synchronous = "normal")
+  DBI::dbExecute(maps_db, "PRAGMA busy_timeout = 5000;")
 
-    #maps_db = DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
-    sql_command_maps <- "insert into maps_table (otu_name, map_object) values (?, ?)"
-    DBI::dbExecute(maps_db, sql_command_maps, params = list(OTU_name, list(ser_mapandinfo)))
-    DBI::dbDisconnect(maps_db)
+  # Insert map data into database
+  sql_command_maps <- "insert into maps_table (otu_name, map_object) values (?, ?)"
+  DBI::dbExecute(maps_db, sql_command_maps, params = list(OTU_name, list(ser_mapandinfo)))
+  DBI::dbDisconnect(maps_db)
 
-  # PNG creation flag
+  # Generate PNG visualization if requested
   if (Make_png) {
     tmap::tmap_mode("plot")
     options(tmap.raster.backend = "raster")
     
-    # Create map plot using tmap without terra
-    map_plot = tmap::tm_shape(newmap) + 
+    # Create map plot using tmap
+    map_plot <- tmap::tm_shape(newmap) + 
       tmap::tm_grid(breaks = at, col = "viridis", title = "Predicted Values") +
       tmap::tm_shape(UK_line) + tmap::tm_lines(col = "black", lwd = 2) +
       tmap::tm_layout(title = OTU_name, legend.outside = TRUE)
 
-    # Create PNG directory if it doesn't exist
-    base::dir.create(base::paste0(Output_dir, "/png"), showWarnings = FALSE, recursive = TRUE)
+    # Create PNG directory if needed
+    dir.create("output/png", showWarnings = FALSE, recursive = TRUE)
 
     # Save plot as PNG
-    grDevices::png(file = base::paste0(Output_dir, "/png/", OTU_name, "_plot.png"), width = 200, height = 400)
-    base::print(map_plot)
+    grDevices::png(file = paste0("output/png/", OTU_name, "_plot.png"), width = 200, height = 400)
+    print(map_plot)
     grDevices::dev.off()
   }
 }
-    
 
 ### 3.2 Generate maps per OTU
-#' Generate maps per OTU
+#' Generate maps for all OTUs in parallel
 #' 
-#' @description
-#' Using rparallel to parallelise -need to reauthenticate database on all cpus
-#' working on.
+#' @description Processes all OTUs in the filtered table to create map objects for each one
+#'   using parallel processing.
 #'
-#' @details
-#' Runs save_otu_map function on all OTUs.
-#' Using rparallel to parallelise -need to reauthenticate database on all cpus
-#' working on.
+#' @details The function:
+#'   1. Sets up a parallel processing cluster
+#'   2. Applies the save_otu_map function to each OTU
+#'   3. Handles environment variables for proper functioning in parallel
 #'
-#' @param Output_dir_with_occ blank
-#' @param OTU_tab_sub_occ_dec blank
-#' @param Env_sub blank
-#' @param grd blank
-#' @param uk.poly blank
-#' @param uk.line blank
-#' @param Schema_table_prefix_modified blank
+#' @param OTU_table_in Character string. Path to the filtered OTU table. 
+#'   Default is 'data/02_processed_data/filtered_otu_table.csv'.
+#' @param environment_data Character string. Path to the environmental data file.
+#'   Default is 'data/01_pre-processed_data/cs_location_avc.csv'.
+#' @param Grid_file Character string. Path to the interpolation grid shapefile.
+#'   Default is 'data/02_processed_data/ukcoast_grid.shp'.
+#' @param UK_poly_file Character string. Path to the UK polygon shapefile.
+#'   Default is 'data/02_processed_data/ukcoast_poly.shp'.
+#' @param UK_line_file Character string. Path to the UK coastline shapefile.
+#'   Default is 'data/02_processed_data/ukcoast_line.shp'.
+#' @param Make_png Logical. Whether to generate PNG visualizations. Default is FALSE.
 #'
-#' @return None
+#' @return None. The function creates map objects for all OTUs and stores them in the maps database.
 #'
 #' @examples
 #' # Prepare map
@@ -792,23 +678,23 @@ maps_parallelise <- function(
 ## Doing this using biopython.
 
 
-# make_blast_py <- function(){
-#    ## **python**
-    ## ```{python filter fasta file, eval=FALSE}
-#    from Bio import SeqIO
-#    import os
+make_blast_py <- function(){
+    ## **python**
+    ```{python filter fasta file, eval=FALSE}
+    from Bio import SeqIO
+    import os
     ## get OTUs we want to keep from OTU table
     ## python can access r variables within markdown and converts our r dataframe into a dictionary- the keys are the OTU names
-#    OTU_tab_dict = r.OTU_tab_sub_occ_dec
+    OTU_tab_dict = r.OTU_tab_sub_occ_dec
     ## make output dir for filtered fasta
-#    if not os.path.exists(r.Output_dir_with_occ+"/Supplementary/Filtered_sequences"):
-#               os.makedirs(r.Output_dir_with_occ+"/Supplementary/Filtered_sequences")
+    if not os.path.exists(r.Output_dir_with_occ+"/Supplementary/Filtered_sequences"):
+               os.makedirs(r.Output_dir_with_occ+"/Supplementary/Filtered_sequences")
     ## only keep records in filtered otu tab (dictionary keys) 
     ## see http://biopython.org/DIST/docs/tutorial/Tutorial.html#sec372 for reference
-#    records = (record for record in SeqIO.parse(r.params["Fasta_file"],"fasta") if record.id in OTU_tab_dict.keys())
-#    SeqIO.write(records, r.Output_dir_with_occ+"/Supplementary/Filtered_sequences/filtered_sequences.fasta", "fasta")
-    ## ```
-#}
+    records = (record for record in SeqIO.parse(r.params["Fasta_file"],"fasta") if record.id in OTU_tab_dict.keys())
+    SeqIO.write(records, r.Output_dir_with_occ+"/Supplementary/Filtered_sequences/filtered_sequences.fasta", "fasta")
+    ```
+}
 
 ###  3.4 Make blast database
 # Take filtered fasta and make blast database for back end of shiny app
