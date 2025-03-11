@@ -670,11 +670,15 @@ save_otu_map <- function(OTU_name,  # Name of OTU we want to create map for.
     if (Make_png == TRUE){
         save(mapandinfo, file = paste0('data/02_processed_data/per_otu_map_data/', OTU_name, ".RData"))
     }
-  ser_mapandinfo = serialize(mapandinfo, connection = NULL, ascii = FALSE)
-  maps_db = DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
-  sql_command_maps <- "insert into maps_table (otu_name, map_object) values (?, ?)"
-  DBI::dbExecute(maps_db, sql_command_maps, params = list(OTU_name, list(ser_mapandinfo)))
-  DBI::dbDisconnect(maps_db)
+    ser_mapandinfo = serialize(mapandinfo, connection = NULL, ascii = FALSE)
+
+    maps_db = DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite", synchronous = 0)
+    DBI::dbExecute(maps_db, "PRAGMA busy_timeout = 5000;")
+
+    #maps_db = DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
+    sql_command_maps <- "insert into maps_table (otu_name, map_object) values (?, ?)"
+    DBI::dbExecute(maps_db, sql_command_maps, params = list(OTU_name, list(ser_mapandinfo)))
+    DBI::dbDisconnect(maps_db)
 
   # PNG creation flag
   if (Make_png) {
@@ -733,39 +737,48 @@ save_otu_map <- function(OTU_name,  # Name of OTU we want to create map for.
 #' which or why
 #'
 #' @export
-maps_parallelise <- function(Output_dir_with_occ,
-                             OTU_tab_sub_occ_dec,
-                             Env_sub,
-                             grd,
-                             uk.poly,
-                             uk.line,
-                             Schema_table_prefix_modified
+maps_parallelise <- function(
+                             OTU_table_in = 'data/02_processed_data/filtered_otu_table.csv',
+                             environment_data = 'data/01_pre-processed_data/cs_location_avc.csv',
+                             Grid_file = 'data/02_processed_data/ukcoast_grid.shp',
+                             UK_poly_file = 'data/02_processed_data/ukcoast_poly.shp',
+                             UK_line_file = 'data/02_processed_data/ukcoast_line.shp',
+                             Make_png = FALSE
                              ){
-                                        #create outdir for map objects
-    dir.create(paste0(Output_dir_with_occ,"/Supplementary/Map_objects"), showWarnings = FALSE,recursive=TRUE)
-                                        #parallelise on 40 CPU
-    cl<-makeCluster(40)
-                                        #make r objs acceptable to all CPU
-    clusterExport(cl,c("save_otu_map","OTU_tab_sub_occ_dec","Env_sub","grd","params","Output_dir_with_occ","Schema_table_prefix_modified","uk.poly","uk.line"))
+    run_save_otu_map <- function(OTU_name) {
+        
+        Sys.getenv("CONDA_PREFIX")
+        Sys.setenv(CONDA_PREFIX="/data/conda/microscope/")
+        proj_db_path <- file.path(Sys.getenv("CONDA_PREFIX"), "share", "proj")
+        Sys.setenv(PROJ_LIB=proj_db_path)
+        Sys.getenv("CONDA_PREFIX")
+        
+        microscope::save_otu_map(
+                        OTU_name = OTU_name,
+                        OTU_table_in = OTU_table_in,
+                        environment_data = environment_data,
+                        Grid_file = Grid_file,
+                        UK_poly_file = UK_poly_file,
+                        UK_line_file = UK_line_file,
+                        Make_png = FALSE
+                    )
+    }
     
+                                        # Create a cluster with 5 nodes
+    cl <- parallel::makeCluster(40)
     
-    parSapply(cl, colnames(OTU_tab_sub_occ_dec), function(x) {
-        save_otu_map(
-            OTU_name = x,
-            OTU_table = OTU_tab_sub_occ_dec,
-            Env_table = Env_sub,
-            Grid = grd,
-            UK_poly = uk.poly,
-            UK_line = uk.line,
-            Conn = conn,
-            Schema_table_prefix = Schema_table_prefix_modified,
-            Output_dir = paste0(Output_dir_with_occ,"/Supplementary/Map_objects"),
-            Make_png=FALSE
-        )
-        })
-    stopCluster(cl)
+                                        # Export the required function to the workers
+    parallel::clusterExport(cl, varlist = c("run_save_otu_map"))
     
-    ## ```
+    filtered_OTU_file='data/02_processed_data/filtered_otu_table.csv'
+    filtered_OTU = data.table::fread(filtered_OTU_file)
+    OTU_names = colnames(filtered_OTU)
+    OTU_name = OTU_names[-1]
+    print(OTU_name)
+    
+    results <- parallel::parSapply(cl, OTU_name, run_save_otu_map)
+    parallel::stopCluster(cl)
+    
 }
 
 
