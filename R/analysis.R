@@ -672,7 +672,7 @@ save_otu_map <- function(OTU_name,  # Name of OTU we want to create map for.
     }
     ser_mapandinfo = serialize(mapandinfo, connection = NULL, ascii = FALSE)
 
-    maps_db = DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite", synchronous = "full")
+    maps_db = DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite", synchronous = "normal")
     DBI::dbExecute(maps_db, "PRAGMA busy_timeout = 5000;")
 
     #maps_db = DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
