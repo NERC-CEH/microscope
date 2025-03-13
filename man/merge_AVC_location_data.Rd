@@ -2,61 +2,43 @@
 % Please edit documentation in R/analysis.R
 \name{merge_AVC_location_data}
 \alias{merge_AVC_location_data}
-\title{Microscope}
+\title{Microscope: Generate taxonomic explorer app inputs}
 \usage{
 merge_AVC_location_data(AVC_data, CS_location_data, CS_AVC_combined)
 }
 \arguments{
-\item{AVC_data}{name of input file with AVC and PH data}
+\item{AVC_data}{Character string. Path to input file with AVC and pH data.}
 
-\item{CS_location_data}{name of input file to use for Countryside survey location data}
+\item{CS_location_data}{Character string. Path to input file with Countryside survey location data.}
 
-\item{CS_AVC_combined}{name of output file with combined data}
+\item{CS_AVC_combined}{Character string. Path where the combined output file will be saved.}
 }
 \value{
-None
+None. The function writes the combined data to the specified output file.
 }
 \description{
-Aim of script is to automate process of generating taxonomic explorer app linking marker gene sequences to environmental responses (see ID-TaxER https://shiny-apps.ceh.ac.uk/ID-TaxER/ for example of similar existing app). Script directly adds to SQL database and generates blast database for app backend and modifies r shiny template file to produce front end. Preprocessed tables (otu/taxonomy etc) and map objects are also saved locally for reference. At the moment this script is suitable for UK data only as uses UK map outline objects to run, should be suitable for all CS molecular datasets (which was really my motivation for writing this). Due to complexity of script would recommend running code chunk by code chunk, rather than knitting it (atleast while it is still being tested). Apps for multiple taxonomic datasets can be generated using repeated runs of this script and added to the same database if they share the same environmental data.
+This script automates the process of generating a taxonomic explorer app
+that links marker gene sequences to environmental responses. The application is similar to
+ID-TaxER (https://shiny-apps.ceh.ac.uk/ID-TaxER/). The script creates an SQL database
+and a BLAST database for the app backend, and modifies an R Shiny template file to produce
+the front end. Preprocessed tables (OTU/taxonomy) and map objects are also saved locally
+for reference. Currently, this script is suitable for UK data only as it uses UK map outline
+objects. It should work for all CS (Countryside Survey) molecular datasets. Multiple
+taxonomic datasets can be added to the same database if they share the same environmental data.
 
-#@param OTU_tab_file should have OTU's/ASV's as column names and sample IDs as row
-#@param Tax_file with two columns one with OTU/ASV names and the other with
-#@param Fasta_file with OTU representative sequences/ ASV sequences corresponding to
-#@param Env_file should contain the following column names
-#@param App_template_input_dir location of shiny app template
-
-#@param OTU_tab_occ_filter: The minimum amount of samples an OTU should occur in to be included in app
-#@param Map_objs_input_dir: Directory with input map objects files
-#@param Output_dir: Directory for all outputs
-#@param SQL_database_name: Name of database to input pre-processed tables and maps,
-#@param SQL_database_host: Database host address for data inputs
-#@param Schema_table_prefix: This string will be added to database schema and table
-#@param Empty_database: TRUE/FALSE, if database is empty all database schemas will be
-#@param Use_occupancy_in_schema_table_names: TRUE/FALSE, if TRUE will add occupancy
-#@param App_title: Title to appear on the app header (not linked to future web
-#@param Example_sequence: Sequence to be used as an example sequence for users when
-#@param Info_text: Text to feature on app describing purpose and function
-
-Step 0.1
-Merge AVC with location from CountrySide survery.
-
-Merge AVC with location from CountrySide survery.
-}
-\details{
-Generate taxonomic explorer app inputs
-
-Filters out rows (OTU) by occupancy level
-\itemize{
-\item Takes in Data from a raw OTU table
-\item Filters based on occupancy level
-}
+Combines AVC (Aggregate Vegetation Class) data with location information from
+the Countryside survey.
 }
 \note{
-This used the 10km areas from country side survey
+Due to the complexity of this script, it's recommended to run it chunk by chunk
+rather than knitting the entire file at once, especially during testing.
+Step 0.1
+Merge AVC with location from CountrySide survey
+
+This uses the 10km areas from Countryside survey.
 }
 \examples{
-
-merge_AVC_location_data <- function('cs_avc_ph.csv', 'cs_location.csv', 'combined.csv')
+merge_AVC_location_data("data/cs_avc_ph.csv", "data/cs_location.csv", "data/combined.csv")
 
 }
 \author{

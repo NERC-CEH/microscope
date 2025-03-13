@@ -2,37 +2,38 @@
 % Please edit documentation in R/analysis.R
 \name{get_abundance_stats}
 \alias{get_abundance_stats}
-\title{Prepare abundance_stats table}
+\title{Generate abundance statistics for OTUs}
 \usage{
 get_abundance_stats(filtered_OTU_file, abundance_stats_file)
 }
 \arguments{
-\item{filtered_OTU_file}{filtered OTU table (created in step 1.2)}
+\item{filtered_OTU_file}{Character string. Path to the filtered OTU table file (created in step 1.2).}
 
-\item{abundance_stats_file}{name to use for the output file, filtered abundace stats}
+\item{abundance_stats_file}{Character string. Path where the abundance statistics will be saved.}
 }
 \value{
-None
+None. The function writes the abundance statistics to the specified output file.
 }
 \description{
-Prepare abundance_stats table.
+Calculates summary statistics for each OTU to characterize its abundance and occupancy.
 }
 \details{
-Get individual OTU stats to summarise abundance (rank) and occupancy
-(percentage and rank), these stats will form a table in the database (added to
-DB in step 2). In this code chunk saved to r
-params$Output_dir /Supplementary/Tables_in_SQL subfolder for reference.
+The function computes:
+\enumerate{
+\item Total abundance of each OTU across all samples
+\item Abundance rank (where ties are given the same rank)
+\item Occupancy (number of samples an OTU is present in)
+\item Occupancy proportion as a percentage with rank
+}
 }
 \note{
 Original code provided output variable:  abundance_stats
 }
 \examples{
-# Requires OTU_tab_sub_occ_dec variable created in another function
-# Get abundance statistics
-#Output_dir_with_occ = 'files'
-#get_abundance_stats(
-#  paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/OTU_abund.csv"),
-#  paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/abundance_stats.csv")
-#)
+# Generate abundance statistics
+get_abundance_stats(
+  "output/Supplementary/Tables_in_SQL/OTU_abund.csv",
+  "output/Supplementary/Tables_in_SQL/abundance_stats.csv"
+)
 
 }

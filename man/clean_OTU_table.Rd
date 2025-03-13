@@ -7,41 +7,39 @@
 clean_OTU_table(OTU_file, filtered_OTU_file, OTU_table_occupancy_filter = 30)
 }
 \arguments{
-\item{OTU_file}{pre-processed OTU table}
+\item{OTU_file}{Character string. Path to the pre-processed OTU table file.}
 
-\item{filtered_OTU_file}{name to use for the output file (filtered OTU table)}
+\item{filtered_OTU_file}{Character string. Path where the filtered OTU table will be saved.}
 
-\item{OTU_table_occupancy_filter}{occupancy level to filter the table by}
+\item{OTU_table_occupancy_filter}{Integer. Minimum number of samples an OTU must be present
+in to be retained. Default is 30.}
 }
 \value{
-None
+None. The function writes the filtered and normalized OTU table to the specified output file.
 }
 \description{
-Clean up the OTU table.
+Filters and normalizes an OTU (Operational Taxonomic Unit) table.
 }
 \details{
-Filters out rows (OTU) by occupancy level
-\itemize{
-\item Takes in Data from a raw OTU table
-\item Filters based on occupancy level
+The function:
+\enumerate{
+\item Removes samples with low read counts (< 5000)
+\item Filters out OTUs that don't meet the specified occupancy threshold
+\item Normalizes the OTU table using total sum scaling
 }
-}
-\note{
-Original code provided output variable:  OTU_tab_sub_occ_dec
 }
 \examples{
-# Create directory for supplementary SQL tables
-#Output_dir_with_occ = 'files'
-#dir.create(
-#  paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL"),
-#  showWarnings = FALSE, 
-#  recursive = TRUE
-#)
+# Clean OTU table with default occupancy filter (30)
+clean_OTU_table(
+  "data/raw_otu_table.csv",
+  "output/Supplementary/Tables_in_SQL/OTU_abund.csv"
+)
 
-# Clean OTU table
-#clean_OTU_table(
-#  'OTU_tab_file',
-#  paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/OTU_abund.csv")
-#)
+# With custom occupancy filter
+clean_OTU_table(
+  "data/raw_otu_table.csv",
+  "output/Supplementary/Tables_in_SQL/OTU_abund.csv",
+  OTU_table_occupancy_filter = 20
+)
 
 }

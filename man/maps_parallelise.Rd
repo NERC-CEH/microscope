@@ -2,44 +2,49 @@
 % Please edit documentation in R/analysis.R
 \name{maps_parallelise}
 \alias{maps_parallelise}
-\title{Generate maps per OTU}
+\title{Generate maps for all OTUs in parallel}
 \usage{
 maps_parallelise(
-  Output_dir_with_occ,
-  OTU_tab_sub_occ_dec,
-  Env_sub,
-  grd,
-  uk.poly,
-  uk.line,
-  Schema_table_prefix_modified
+  OTU_table_in = "data/02_processed_data/filtered_otu_table.csv",
+  environment_data = "data/01_pre-processed_data/cs_location_avc.csv",
+  Grid_file = "data/02_processed_data/ukcoast_grid.shp",
+  UK_poly_file = "data/02_processed_data/ukcoast_poly.shp",
+  UK_line_file = "data/02_processed_data/ukcoast_line.shp",
+  Make_png = FALSE
 )
 }
 \arguments{
-\item{Output_dir_with_occ}{blank}
+\item{OTU_table_in}{Character string. Path to the filtered OTU table.
+Default is 'data/02_processed_data/filtered_otu_table.csv'.}
 
-\item{OTU_tab_sub_occ_dec}{blank}
+\item{environment_data}{Character string. Path to the environmental data file.
+Default is 'data/01_pre-processed_data/cs_location_avc.csv'.}
 
-\item{Env_sub}{blank}
+\item{Grid_file}{Character string. Path to the interpolation grid shapefile.
+Default is 'data/02_processed_data/ukcoast_grid.shp'.}
 
-\item{grd}{blank}
+\item{UK_poly_file}{Character string. Path to the UK polygon shapefile.
+Default is 'data/02_processed_data/ukcoast_poly.shp'.}
 
-\item{uk.poly}{blank}
+\item{UK_line_file}{Character string. Path to the UK coastline shapefile.
+Default is 'data/02_processed_data/ukcoast_line.shp'.}
 
-\item{uk.line}{blank}
-
-\item{Schema_table_prefix_modified}{blank}
+\item{Make_png}{Logical. Whether to generate PNG visualizations. Default is FALSE.}
 }
 \value{
-None
+None. The function creates map objects for all OTUs and stores them in the maps database.
 }
 \description{
-Using rparallel to parallelise -need to reauthenticate database on all cpus
-working on.
+Processes all OTUs in the filtered table to create map objects for each one
+using parallel processing.
 }
 \details{
-Runs save_otu_map function on all OTUs.
-Using rparallel to parallelise -need to reauthenticate database on all cpus
-working on.
+The function:
+\enumerate{
+\item Sets up a parallel processing cluster
+\item Applies the save_otu_map function to each OTU
+\item Handles environment variables for proper functioning in parallel
+}
 }
 \note{
 I think this might need merging with another function, can't remember

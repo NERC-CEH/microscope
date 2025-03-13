@@ -2,69 +2,59 @@
 % Please edit documentation in R/analysis.R
 \name{save_otu_map}
 \alias{save_otu_map}
-\title{Generate maps per OTU}
+\title{Generate map for an individual OTU}
 \usage{
 save_otu_map(
   OTU_name,
-  OTU_table,
-  Env_table,
-  Grid,
-  UK_poly,
-  UK_line,
-  Conn,
-  Schema_table_prefix,
-  Output_dir,
-  Make_png
+  OTU_table_in,
+  environment_data,
+  Grid_file,
+  UK_poly_file,
+  UK_line_file,
+  Make_png = FALSE
 )
 }
 \arguments{
-\item{OTU_name}{Not sure what this is.}
+\item{OTU_name}{Character string. Name of the OTU to create a map for.}
 
-\item{OTU_table}{filtered table}
+\item{OTU_table_in}{Character string. Path to the filtered OTU table.}
 
-\item{Env_table}{Env_sub #created in map_prep}
+\item{environment_data}{Character string. Path to the environmental data file.}
 
-\item{Grid}{created in map_prep}
+\item{Grid_file}{Character string. Path to the interpolation grid shapefile.}
 
-\item{UK_poly}{uk.poly #created in map_prep}
+\item{UK_poly_file}{Character string. Path to the UK polygon shapefile.}
 
-\item{UK_line}{uk.line #created in map_prep}
+\item{UK_line_file}{Character string. Path to the UK coastline shapefile.}
 
-\item{Conn}{SQLdb, removed so correct}
-
-\item{Schema_table_prefix}{removed for time being}
-
-\item{Output_dir}{not used #abandoned in favour of dir in string}
-
-\item{Make_png}{flag
-#@param otu_table filtered OTU table (created in step 1.2)
-#@param ukcoast_poly shape file of uk polygon
-#@param ukcoast_line shape file of uk outline}
+\item{Make_png}{Logical. Whether to generate a PNG visualization. Default is FALSE.}
 }
 \value{
-None
+None. The function saves the map object to the maps database and optionally
+generates a PNG visualization.
 }
 \description{
-creates map object representing an individual.
-OTUs/ ASVs geographical distribution.
+Creates a map object representing the geographical distribution of an individual OTU/ASV.
 }
 \details{
-\strong{save_otu_map} function  creates map object representing an individual
-OTUs/ ASVs geographical distribution this is saved to both the specified
-outputdir and database. Pngs of plotted map objects can also be saved to
-outdir for reference.
+The function:
+\enumerate{
+\item Extracts abundance data for the specified OTU
+\item Performs kriging interpolation to predict values across the UK
+\item Clips the interpolation to the UK coastline
+\item Saves the map object to the maps database
+\item Optionally generates a PNG visualization
 }
-\note{
-I think this might need merging with another function, can't remember
-which or why
 }
 \examples{
-
-# Prepare map
-#map_prep(
-#  otu_table = "/Supplementary/Tables_in_SQL/OTU_abund.csv",
-#  ukcoast_poly = 'ukcoast1.shp',
-#  ukcoast_line = 'ukcoast_line.shp'
-#)
+save_otu_map(
+  OTU_name = "OTU1",
+  OTU_table_in = "output/Supplementary/Tables_in_SQL/OTU_abund.csv",
+  environment_data = "output/Supplementary/Tables_in_SQL/Env.csv",
+  Grid_file = "output/map/uk_grid.shp",
+  UK_poly_file = "output/map/uk_poly.shp",
+  UK_line_file = "output/map/uk_line.shp",
+  Make_png = TRUE
+)
 
 }

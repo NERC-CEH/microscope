@@ -2,7 +2,7 @@
 % Please edit documentation in R/analysis.R
 \name{map_prep}
 \alias{map_prep}
-\title{Put the filtered OTU, taxonomy, and abundance files into RSQLite files}
+\title{Prepare map data for visualization}
 \usage{
 map_prep(
   ukcoast_poly,
@@ -13,41 +13,38 @@ map_prep(
 )
 }
 \arguments{
-\item{ukcoast_poly}{shape file of uk polygon}
+\item{ukcoast_poly}{Character string. Path to UK polygon shapefile.}
 
-\item{ukcoast_line}{shape file of uk outline}
+\item{ukcoast_line}{Character string. Path to UK coastline shapefile.}
 
-\item{uk_poly_converted}{shape file of uk polygon}
+\item{uk_poly_converted}{Character string. Path where the processed UK polygon will be saved.}
 
-\item{uk_line_converted}{shape file of uk outline}
+\item{uk_line_converted}{Character string. Path where the processed UK coastline will be saved.}
 
-\item{uk_grid_converted}{shape file of uk outline}
+\item{uk_grid_converted}{Character string. Path where the interpolation grid will be saved.}
 }
 \value{
-None
+None. The function saves the processed spatial objects to the specified output files.
 }
 \description{
-Step 3 Make map objects for DB.
+Prepares UK map data for use in OTU distribution visualization.
 }
 \details{
-Step 3 Make map objects for DB
+The function:
+\enumerate{
+\item Reads UK coastline shape files
+\item Sets the correct coordinate reference system
+\item Creates an interpolation grid based on the UK polygon bounding box
+\item Saves the processed spatial objects as shapefiles
 }
-\note{
-Running this as separate function, but perhaps this should be the start of another function?
-
-abund_table is called by env name: OTU_tab_sub_occ_dec
-looks like this sets up a series of functions and variables to be used in a latter step
-to make a db. This last part maybe much harder to split up.   Need to focus on first
-parts and leave this until later. Perhaps it would be better to move to SQLite????
-Perhaps some of the functions to setup, like grid bit
 }
 \examples{
-# Prepare map
-#map_prep(
-#  otu_table = "supplementary/Tables_in_SQL/OTU_abund.csv",
-#  enviroment_data='country_side_survey/CS2007_Env_pH_AVC.csv'
-#  ukcoast_poly = 'ukcoast1.shp',
-#  ukcoast_line = 'ukcoast_line.shp'
-#)
+map_prep(
+  "data/map/ukcoast1.shp",
+  "data/map/ukcoast_line.shp",
+  "output/map/uk_poly.shp",
+  "output/map/uk_line.shp",
+  "output/map/uk_grid.shp"
+)
 
 }

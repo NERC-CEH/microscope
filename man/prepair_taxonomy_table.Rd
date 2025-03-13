@@ -11,22 +11,26 @@ prepair_taxonomy_table(
 )
 }
 \arguments{
-\item{taxonomy_file}{pre-processed taxonomy table to use as input}
+\item{taxonomy_file}{Character string. Path to the pre-processed taxonomy file.}
 
-\item{filtered_taxonomy_file}{name for output file, which is a filtered taxonomy table}
+\item{filtered_taxonomy_file}{Character string. Path where the filtered taxonomy data will be saved.}
 
-\item{OTU_abund_filter_file}{filtered OTU table created in step 1.2 for input}
+\item{OTU_abund_filter_file}{Character string. Path to the filtered OTU table file to use for filtering.}
 }
 \value{
-None
+None. The function writes the filtered taxonomy data to the specified output file.
 }
 \description{
-Prepare abundance_stats table.
+Processes and formats taxonomy data for the taxonomic explorer app.
 }
 \details{
-Read in taxonomy, split taxonomic fields by ";"and subset to only include OTUs
-that meet occupancy threshold ,save to r params$Output_dir/Supplementary/Tables_in_SQL
-subfolder for reference.
+The function:
+\enumerate{
+\item Reads in the taxonomy file
+\item Splits taxonomic classifications by ";" into separate columns
+\item Filters to include only OTUs that meet the occupancy threshold
+\item Formats taxonomy information by removing prefixes
+}
 }
 \note{
 Original code provided output variable:
@@ -34,11 +38,10 @@ Taxonomy_filt (Taxonomy_Sort is now written as extra steps were needed.)
 }
 \examples{
 # Prepare taxonomy table
-#Output_dir_with_occ = 'files'
-#prepair_taxonomy_table(
-#  OTU_abund_filter_file = paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/OTU_abund.csv")#,
- # input_file = 'Tax_file',
- # output_file = paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/Taxonomy.csv")
-#)
+prepair_taxonomy_table(
+  "data/raw_taxonomy.csv",
+  "output/Supplementary/Tables_in_SQL/Taxonomy.csv",
+  "output/Supplementary/Tables_in_SQL/OTU_abund.csv"
+)
 
 }

@@ -7,42 +7,33 @@
 clean_environmental_metadata(enviroment_data, filtered_env_data)
 }
 \arguments{
-\item{enviroment_data}{enviromental data file. should contain the following column names
-"avc_code","avc","pH","eastings","northings, row names should be sample ID's
-(these should be able to be matched to Env file but don't need to be in the
-same order)}
+\item{enviroment_data}{Character string. Path to environmental data file. Should contain
+columns "avc_code", "avc", "pH", "eastings", "northings". Row names should be sample IDs
+that match the OTU table.}
 
-\item{filtered_env_data}{name to use for the outputed filtered env file}
+\item{filtered_env_data}{Character string. Path where the filtered environmental data will be saved.}
 }
 \value{
-None
+None. The function writes the filtered data to the specified output file.
 }
 \description{
-Clean up enviromental metadata.
+Processes and formats environmental metadata for use in the taxonomic explorer app.
 }
 \details{
-Takes in pre-prcoessed data and cleans it up:
-\itemize{
-\item Removes unneeded fields
-\item rearranges into a format SQL is happier with
-\item Write new data to file
-}
+The function removes unnecessary fields and rearranges the data into a format
+suitable for SQL. It removes samples with missing AVC codes.
 }
 \note{
 Original code provided output variable: Env_for_SQL
 }
 \examples{
 # Create directory for supplementary SQL tables
-#dir.create(
-#  'Supplementary/Tables_in_SQL,
-#  showWarnings = FALSE, 
-#  recursive = TRUE
-#)
+dir.create("output/Supplementary/Tables_in_SQL", showWarnings = FALSE, recursive = TRUE)
 
 # Clean environmental metadata
-#clean_environmental_metadata(
-#  params$Env_file,
-#  paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/Env.csv")
-#)
+clean_environmental_metadata(
+  "data/environmental_data.csv",
+  "output/Supplementary/Tables_in_SQL/Env.csv"
+)
 
 }

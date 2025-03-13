@@ -1,17 +1,17 @@
 #' Microscope: Generate taxonomic explorer app inputs
 #'
 #' @author "Briony Jones"
-#' 
-#' @import data.table (>= 1.15.4)
-#' @import vegan (>= 2.6_8)
-#' @import terra (>= 1.7_78) 
-#' @import ggplot2 (>= 3.5.1)
-#' @import gstat (>= 2.1_2)
-#' @import parallel 
-#' @import splitstackshape (>= 1.4.8)
-#' @import RSQLite (>= 2.3)
-#' @import DBI (>= 1.2.3)
-#' @import sp (>= 2.1)
+#'
+#' @import data.table
+#' @import vegan
+#' @import terra
+#' @import ggplot2
+#' @import gstat
+#' @import parallel
+#' @import splitstackshape
+#' @import RSQLite
+#' @import DBI
+#' @import sp
 #' @import sf
 #' @import tmap
 #'

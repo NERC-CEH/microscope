@@ -2,7 +2,7 @@
 % Please edit documentation in R/analysis.R
 \name{format_otu_for_Rsqlite}
 \alias{format_otu_for_Rsqlite}
-\title{Put the filtered OTU, taxonomy, and abundance files into RSQLite files}
+\title{Create SQLite database tables for OTU, taxonomy, and abundance data}
 \usage{
 format_otu_for_Rsqlite(
   filtered_abundance_csv,
@@ -11,32 +11,32 @@ format_otu_for_Rsqlite(
 )
 }
 \arguments{
-\item{abundance_csv}{filtered OTU table}
+\item{filtered_abundance_csv}{Character string. Path to the filtered abundance statistics file.}
 
-\item{taxonomy_csv}{filtered abundance table}
+\item{filtered_taxonomy_csv}{Character string. Path to the filtered taxonomy file.}
 
-\item{otu_csv}{filtered taxonomy table}
+\item{filtered_otu_csv}{Character string. Path to the filtered OTU table file.}
 }
 \value{
-None
+None. The function creates SQLite database files with the appropriate tables.
 }
 \description{
-Put the filtered OTU, taxonomy, and abundance files into RSQLite files.
+Generates SQLite database files and tables to store the filtered OTU,
+taxonomy, and abundance data for the app backend.
 }
 \details{
-Reads in the filtered OTU, taxonomy, and abundance files, and creates corresponding
-tables in an RSQLite file
+The function:
+\enumerate{
+\item Creates separate SQLite database files for abundance, taxonomy, OTU, and map data
+\item Defines appropriate schema for each table
+\item Populates the tables with the filtered data
 }
-\note{
-format_otu_for_Rsqlite(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv)
 }
 \examples{
-# Prepare taxonomy table
-#Output_dir_with_occ = 'files'
-#prepair_taxonomy_table(
-#  OTU_abund_filter_file = paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/OTU_abund.csv"),
-#   input_file = 'Tax_file.csv',
-#  output_file = paste0(Output_dir_with_occ, "/Supplementary/Tables_in_SQL/Taxonomy.csv")
-#)
+format_otu_for_Rsqlite(
+  "output/Supplementary/Tables_in_SQL/abundance_stats.csv",
+  "output/Supplementary/Tables_in_SQL/Taxonomy.csv",
+  "output/Supplementary/Tables_in_SQL/OTU_abund.csv"
+)
 
 }
