@@ -677,6 +677,9 @@ maps_parallelise <- function(
 ## corresponding to OTU's/ ASV's that did not meet occupancy filter)
 ## Doing this using biopython.
 
+#' Make BLAST
+#' @description blast
+#' @export
 make_blast_py <- function(filtered_OTU_file='data/02_processed_data/filtered_otu_table.csv',
                                  input_fasta_file='data/01_pre-processed_data/repseqs.fasta',
                                  filtered_fasta_file='data/02_processed_data/filtered_sequences.fasta'
@@ -707,6 +710,9 @@ SeqIO.write(records, r.filtered_fasta_file, "fasta")
 ###  3.4 Make blast database
 # Take filtered fasta and make blast database for back end of shiny app
 
+#' Make BLASTdb
+#' @description blastdb
+#' @export
 make_blast_bash <- function(fasta_file, blast_db_out) {
   # Create the BLAST database directory
   system(paste("mkdir -p", shQuote(dirname(blast_db_out))), ignore.stdout = TRUE, ignore.stderr = TRUE)
