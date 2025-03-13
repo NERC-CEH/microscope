@@ -677,39 +677,45 @@ maps_parallelise <- function(
 ## corresponding to OTU's/ ASV's that did not meet occupancy filter)
 ## Doing this using biopython.
 
+make_blast_py <- function(filtered_OTU_file='data/02_processed_data/filtered_otu_table.csv',
+                                 input_fasta_file='data/01_pre-processed_data/repseqs.fasta',
+                                 filtered_fasta_file='data/02_processed_data/filtered_sequences.fasta'
+                                ) {
+    # Create a Python code block as a string
+py_code <- '
+from Bio import SeqIO
+import pandas as pd
+import os
+# Get OTUs we want to keep from OTU table
+otu_data = pd.read_csv(r.filtered_OTU_file, sep=None, engine="python")
+otu_ids = otu_data.columns.values.tolist()
 
-make_blast_py <- function(){
-    ## **python**
-    ```{python filter fasta file, eval=FALSE}
-    from Bio import SeqIO
-    import os
-    ## get OTUs we want to keep from OTU table
-    ## python can access r variables within markdown and converts our r dataframe into a dictionary- the keys are the OTU names
-    OTU_tab_dict = r.OTU_tab_sub_occ_dec
-    ## make output dir for filtered fasta
-    if not os.path.exists(r.Output_dir_with_occ+"/Supplementary/Filtered_sequences"):
-               os.makedirs(r.Output_dir_with_occ+"/Supplementary/Filtered_sequences")
-    ## only keep records in filtered otu tab (dictionary keys) 
-    ## see http://biopython.org/DIST/docs/tutorial/Tutorial.html#sec372 for reference
-    records = (record for record in SeqIO.parse(r.params["Fasta_file"],"fasta") if record.id in OTU_tab_dict.keys())
-    SeqIO.write(records, r.Output_dir_with_occ+"/Supplementary/Filtered_sequences/filtered_sequences.fasta", "fasta")
-    ```
+# Only keep records in filtered otu tab (dictionary keys)
+records = (record for record in SeqIO.parse(r.input_fasta_file, "fasta") #r.input_fasta_file
+           if record.id in otu_ids)
+# Write filtered sequences to fasta file
+SeqIO.write(records, r.filtered_fasta_file, "fasta")
+    '
+    assign("filtered_OTU_file", filtered_OTU_file, envir = .GlobalEnv)
+    assign("input_fasta_file", input_fasta_file, envir = .GlobalEnv)
+    assign("filtered_fasta_file", filtered_fasta_file, envir = .GlobalEnv)
+    # Run the Python code
+    reticulate::py_run_string(py_code)
 }
+
 
 ###  3.4 Make blast database
 # Take filtered fasta and make blast database for back end of shiny app
 
-#make_blast_bash <- function(){
-    ## **Bash:**
-    ## ```{bash BlastDB, eval=FALSE}
-    ## cmake makes dir and any parent dirs necessary
-#    cmake -E make_directory $Output_dir_with_occ/App/Blast_DB
-#    makeblastdb -in $Output_dir_with_occ/Supplementary/Filtered_sequences/filtered_sequences.fasta -dbtype nucl -out $Output_dir_with_occ/App/Blast_DB/Blast_DB
-    ## ```
-#}
+make_blast_bash <- function(fasta_file, blast_db_out) {
+  # Create the BLAST database directory
+  system(paste("mkdir -p", shQuote(dirname(blast_db_out))), ignore.stdout = TRUE, ignore.stderr = TRUE)
 
-
-
+  # Run makeblastdb
+  Sys.setenv(PATH=paste0(Sys.getenv("PATH"), ":/data/conda/microscope/bin"))
+  system(paste("makeblastdb -in", shQuote(fasta_file),
+               "-dbtype nucl -out", shQuote(blast_db_out)))
+}
 
 ## create_app_python <-function(){
 ## #### 4 Create app front-end from template
