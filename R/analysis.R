@@ -287,6 +287,7 @@ prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_ab
 #' @param filtered_abundance_csv Character string. Path to the filtered abundance statistics file.
 #' @param filtered_taxonomy_csv Character string. Path to the filtered taxonomy file.
 #' @param filtered_otu_csv Character string. Path to the filtered OTU table file.
+#' @param ukcoast_line_shp Character string. Path to the uk coast shapefile.
 #' 
 #' @return None. The function creates SQLite database files with the appropriate tables.
 #'
@@ -295,10 +296,11 @@ prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_ab
 #'   "output/Supplementary/Tables_in_SQL/abundance_stats.csv",
 #'   "output/Supplementary/Tables_in_SQL/Taxonomy.csv",
 #'   "output/Supplementary/Tables_in_SQL/OTU_abund.csv"
+#'   "data/00_raw_data/uk_map_objs/ukcoast_line.shp"
 #' )
 #' 
 #' @export
-format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv) {
+format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv, ukcoast_line_shp) {
     print("Debug: Load files")
     
     # Read the input files
@@ -367,8 +369,36 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     maps_db <- DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
     DBI::dbExecute(conn = maps_db, statement = sql_command_maps)
     DBI::dbDisconnect(maps_db)
+   
+    ## Maps table will be filled in step 3 using save_otu_map function
+
+
+    conn <- dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
+
+    ## Create plotting_tools table if it doesn't already exist
+    ## Note: SQLite doesn't have schemas like PostgreSQL, so we'll use table naming convention
+    dbExecute(conn, "CREATE TABLE IF NOT EXISTS plotting_tools_map_tools (
+           description TEXT PRIMARY KEY,
+           plot_object BLOB
+          );")
     
-    # Maps table will be filled in step 3 using save_otu_map function
+    ## Read in UK map outline using sf instead of rgdal
+    uk.line <- sf::st_read(ukcoast_line_shp)
+
+    ## Convert to stream of bytes
+    ser_uk.line <- serialize(uk.line, connection=NULL, ascii = FALSE)
+
+    ## Insert into the table using prepared statement via DBI
+    ## This handles binary data properly without needing special escape functions
+    dbExecute(
+        conn, 
+        "INSERT OR IGNORE INTO plotting_tools_map_tools (description, plot_object) VALUES (?, ?)",
+        params = list('map_outline', list(ser_uk.line))
+    )
+
+    ## Close the connection
+    dbDisconnect(conn)
+    
 }
 
 ## Step 3 Make map objects for DB
