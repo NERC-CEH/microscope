@@ -340,8 +340,10 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     DBI::dbWriteTable(taxonomy_db, "taxonomy_table", taxonomy_csv, append = TRUE, row.names = FALSE)
     DBI::dbDisconnect(taxonomy_db)
     
-    # OTU table preparation (transpose due to column limit)
+    ## OTU table preparation (transpose due to column limit)
+    rownames(otu_csv) <- otu_csv[, 1]
     transpose_otu_csv <- t(otu_csv)
+    transpose_otu_csv = as.data.frame(transpose_otu_csv, stringsAsFactors = FALSE)
     otu_csv <- data.frame(hit = row.names(transpose_otu_csv), transpose_otu_csv, check.names = FALSE)
     
     # Create OTU table
