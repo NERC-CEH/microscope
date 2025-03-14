@@ -1,2 +1,4 @@
 *.sqlite
 *.csv
+.RData
+.Rhistory
