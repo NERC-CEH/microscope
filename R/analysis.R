@@ -304,9 +304,31 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     print("Debug: Load files")
     
     # Read the input files
+    environmental_csv <- read.csv(filtered_environmental_csv)
     abundance_csv <- read.csv(filtered_abundance_csv)
     taxonomy_csv <- read.csv(filtered_taxonomy_csv)
     otu_csv <- read.csv(filtered_otu_csv)
+
+
+  dbExecute(conn=conn,'CREATE TABLE IF NOT EXISTS env_attributes.env_attributes_all(sample character varying(250),avc_code numeric ,avc character varying(250),ph numeric,CONSTRAINT env_attributes_all_pkey PRIMARY KEY (sample));')
+  #populate env table if any primary keys already exist errors will be produced
+  append_cmd=sqlAppendTable(con=conn,table=Id(schema="env_attributes",table="env_attributes_all"), values =Env_for_SQL, row.names = FALSE )
+    dbExecute(conn=conn,statement=append_cmd)
+
+    
+    # Create environmental table
+    sql_command <- sprintf(
+        "create table if not exists env_table (hit character varying(250), avc_code numeric, avc character varying(250), pH numeric, primary key (hit))"
+    )
+    
+    # Connect to environmental database and create table
+    environmental_db <- DBI::dbConnect(RSQLite::SQLite(), "environmental_db.sqlite")
+    DBI::dbExecute(conn = environmental_db, statement = sql_command)
+    
+    # Fill table and disconnect
+    DBI::dbWriteTable(environmental_db, "env_table", environmental_csv, append = TRUE, row.names = FALSE)
+    DBI::dbDisconnect(environmental_db)
+
     
     # Create abundance table
     sql_command <- sprintf(
@@ -538,7 +560,7 @@ save_otu_map <- function(OTU_name,
 
   # Extract OTU abundance data
   otu_abund <- OTU_table[, OTU_name, drop = FALSE]
-  dat <- cbind(env_data[, c('E_2_FIG_10KM', 'N_2_FIG_10KM')], otu_abund)
+  dat <- cbind(Env_sub[, c('E_2_FIG_10KM', 'N_2_FIG_10KM')], otu_abund)
   colnames(dat)[3] <- "OTU"
   dat <- dat[complete.cases(dat), ]
 
