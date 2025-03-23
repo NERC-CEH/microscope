@@ -385,9 +385,17 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     # Fill table and disconnect
     DBI::dbWriteTable(otu_db, "otu_table", otu_csv, append = TRUE, row.names = FALSE)
     DBI::dbDisconnect(otu_db)
-    
+
+DBI::dbExecute(con, "CREATE TABLE IF NOT EXISTS maps_table (
+  otu_name character varying(30),
+  points_object BLOB NOT NULL,
+  break_points TEXT NOT NULL,
+  primary key (otu_name)
+)")
+
+    #turns out that varchar is ignored by SQLlite, it only uses text.  Can be great to indicate to developers that we want short text though.
     # Create maps table
-    sql_command_maps <- "create table maps_table (otu_name character varying (30), map_object blob, primary key (otu_name))"
+    sql_command_maps <- "create table maps_table (otu_name character varying (30), map_object blob, break_points text primary key (otu_name))"
     
     # Connect to maps database and create table
     maps_db <- DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
@@ -598,24 +606,20 @@ save_otu_map <- function(OTU_name,
     maxv
   )
 
-  # Combine map and interval data
-  mapandinfo <- cbind(newmap, at)
+  # Store breakpoints as JSON for db
+  sf_json <- jsonlite::toJSON(sf::st_geometry(newmap))
+  break_points_json <- jsonlite::toJSON(at)
 
-  # Save map data locally if requested
-  if (Make_png) {
-    save(mapandinfo, file = paste0('data/02_processed_data/per_otu_map_data/', OTU_name, ".RData"))
-  }
-  
-  # Serialize map data for database storage
-  ser_mapandinfo <- serialize(mapandinfo, connection = NULL, ascii = FALSE)
-
+  # convert to list when serialising as SQLite sees serialised as many objects  
+  serialized_sf <- list(serialize(newmap, NULL))
+    
   # Connect to maps database
   maps_db <- DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite", synchronous = "normal")
   DBI::dbExecute(maps_db, "PRAGMA busy_timeout = 5000;")
 
   # Insert map data into database
-  sql_command_maps <- "insert into maps_table (otu_name, map_object) values (?, ?)"
-  DBI::dbExecute(maps_db, sql_command_maps, params = list(OTU_name, list(ser_mapandinfo)))
+  sql_command_maps <- "insert or replace into maps_table (otu_name, map_object, break_points) values (?, ?, ?)"
+  DBI::dbExecute(maps_db, sql_command_maps, params = list(OTU_name, serialized_sf, break_points_json))
   DBI::dbDisconnect(maps_db)
 
   # Generate PNG visualization if requested
