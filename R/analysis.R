@@ -13,7 +13,6 @@
 #' @import DBI
 #' @import sp
 #' @import sf
-#' @import tmap
 #'
 #' @description This script automates the process of generating a taxonomic explorer app 
 #'   that links marker gene sequences to environmental responses. The application is similar to
@@ -386,13 +385,6 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     DBI::dbWriteTable(otu_db, "otu_table", otu_csv, append = TRUE, row.names = FALSE)
     DBI::dbDisconnect(otu_db)
 
-DBI::dbExecute(con, "CREATE TABLE IF NOT EXISTS maps_table (
-  otu_name character varying(30),
-  points_object BLOB NOT NULL,
-  break_points TEXT NOT NULL,
-  primary key (otu_name)
-)")
-
     #turns out that varchar is ignored by SQLlite, it only uses text.  Can be great to indicate to developers that we want short text though.
     # Create maps table
     sql_command_maps <- "create table maps_table (otu_name character varying (30), map_object blob, break_points text primary key (otu_name))"
@@ -624,23 +616,6 @@ save_otu_map <- function(OTU_name,
 
   # Generate PNG visualization if requested
   if (Make_png) {
-    tmap::tmap_mode("plot")
-    options(tmap.raster.backend = "raster")
-    
-    # Create map plot using tmap
-    map_plot <- tmap::tm_shape(newmap) + 
-      tmap::tm_grid(breaks = at, col = "viridis", title = "Predicted Values") +
-      tmap::tm_shape(UK_line) + tmap::tm_lines(col = "black", lwd = 2) +
-      tmap::tm_layout(title = OTU_name, legend.outside = TRUE)
-
-    # Create PNG directory if needed
-    dir.create("output/png", showWarnings = FALSE, recursive = TRUE)
-
-    # Save plot as PNG
-    grDevices::png(file = paste0("output/png/", OTU_name, "_plot.png"), width = 200, height = 400)
-    print(map_plot)
-    grDevices::dev.off()
-  }
 }
 
 ### 3.2 Generate maps per OTU
