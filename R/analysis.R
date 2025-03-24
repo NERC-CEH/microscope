@@ -304,7 +304,12 @@ prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_ab
 #' )
 #' 
 #' @export
-format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv, ukcoast_line_shp, filtered_environmental_csv) {
+format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv, ukcoast_line_shp, filtered_environmental_csv,
+                                   environmental_db = "environmental_db.sqlite",
+                                   abundance_db = "abundance_db.sqlite",
+                                   taxonomy_db = "taxonomy_db.sqlite",
+                                   otu_db = "otu_db.sqlite",
+                                   maps_db = "maps_db.sqlite") {
     print("Debug: Load files")
     
     # Read the input files
@@ -314,19 +319,19 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     otu_csv <- read.csv(filtered_otu_csv)
 
 
-  dbExecute(conn=conn,'CREATE TABLE IF NOT EXISTS env_attributes.env_attributes_all(sample character varying(250),avc_code numeric ,avc character varying(250),ph numeric,CONSTRAINT env_attributes_all_pkey PRIMARY KEY (sample));')
+#  dbExecute(conn=conn,'CREATE TABLE IF NOT EXISTS env_attributes.env_attributes_all(sample character varying(250),avc_code numeric ,avc character varying(250),ph numeric,CONSTRAINT env_attributes_all_pkey PRIMARY KEY (sample));')
   #populate env table if any primary keys already exist errors will be produced
-  append_cmd=sqlAppendTable(con=conn,table=Id(schema="env_attributes",table="env_attributes_all"), values =Env_for_SQL, row.names = FALSE )
-    dbExecute(conn=conn,statement=append_cmd)
+#  append_cmd=sqlAppendTable(con=conn,table=Id(schema="env_attributes",table="env_attributes_all"), values =Env_for_SQL, row.names = FALSE )
+#    dbExecute(conn=conn,statement=append_cmd)
 
-    
+    print("Env")
     # Create environmental table
     sql_command <- sprintf(
         "create table if not exists env_table (hit character varying(250), avc_code numeric, avc character varying(250), pH numeric, primary key (hit))"
     )
     
     # Connect to environmental database and create table
-    environmental_db <- DBI::dbConnect(RSQLite::SQLite(), "environmental_db.sqlite")
+    environmental_db <- DBI::dbConnect(RSQLite::SQLite(), environmental_db)
     DBI::dbExecute(conn = environmental_db, statement = sql_command)
 
     #ensure first column is called "hit"
@@ -337,6 +342,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     DBI::dbDisconnect(environmental_db)
 
     
+    print("abund")
     # Create abundance table
     sql_command <- sprintf(
         "create table if not exists abund_table (hit character varying(30), %s numeric, primary key (hit))",
@@ -344,13 +350,17 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     )
     
     # Connect to abundance database and create table
-    abundance_db <- DBI::dbConnect(RSQLite::SQLite(), "abundance_db.sqlite")
+    abundance_db <- DBI::dbConnect(RSQLite::SQLite(), abundance_db)
     DBI::dbExecute(conn = abundance_db, statement = sql_command)
+
+    #ensure first column is called "hit"
+    colnames(abundance_csv)[1] <- "hit"
     
     # Fill table and disconnect
     DBI::dbWriteTable(abundance_db, "abund_table", abundance_csv, append = TRUE, row.names = FALSE)
     DBI::dbDisconnect(abundance_db)
-    
+
+    print("Taxa")
     # Create taxonomy table
     sql_command_taxonomy <- sprintf(
         "create table taxonomy_table (hit character varying (30), %s character varying (250), primary key (hit))",
@@ -362,7 +372,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     )
     
     # Connect to taxonomy database and create table
-    taxonomy_db <- DBI::dbConnect(RSQLite::SQLite(), "taxonomy_db.sqlite")
+    taxonomy_db <- DBI::dbConnect(RSQLite::SQLite(), taxonomy_db)
     DBI::dbExecute(conn = taxonomy_db, statement = sql_command_taxonomy)
     
     # Fill table and disconnect
@@ -375,6 +385,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     transpose_otu_csv = as.data.frame(transpose_otu_csv, stringsAsFactors = FALSE)
     otu_csv <- data.frame(hit = row.names(transpose_otu_csv), transpose_otu_csv, check.names = FALSE)
     
+    print("OTU")
     # Create OTU table
     sql_command_otu <- sprintf(
         "create table otu_table (hit character varying (30), %s character varying (30), primary key (hit))",
@@ -386,30 +397,33 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     )
     
     # Connect to OTU database and create table
-    otu_db <- DBI::dbConnect(RSQLite::SQLite(), "otu_db.sqlite")
+    otu_db <- DBI::dbConnect(RSQLite::SQLite(), otu_db)
     DBI::dbExecute(conn = otu_db, statement = sql_command_otu)
     
     # Fill table and disconnect
     DBI::dbWriteTable(otu_db, "otu_table", otu_csv, append = TRUE, row.names = FALSE)
     DBI::dbDisconnect(otu_db)
 
+    print("Maps 1")
+
     #turns out that varchar is ignored by SQLlite, it only uses text.  Can be great to indicate to developers that we want short text though.
     # Create maps table
-    sql_command_maps <- "create table maps_table (otu_name character varying (30), map_object blob, break_points text primary key (otu_name))"
+    sql_command_maps <- "create table maps_table (otu_name character varying (30), map_object blob, break_points text, primary key (otu_name))"
     
     # Connect to maps database and create table
-    maps_db <- DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
-    DBI::dbExecute(conn = maps_db, statement = sql_command_maps)
-    DBI::dbDisconnect(maps_db)
+    maps_db_conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db)
+    DBI::dbExecute(conn = maps_db_conn, statement = sql_command_maps)
+    DBI::dbDisconnect(maps_db_conn)
    
     ## Maps table will be filled in step 3 using save_otu_map function
 
+    print("Maps 2")
 
-    conn <- dbConnect(RSQLite::SQLite(), "maps_db.sqlite")
+    conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db)
 
     ## Create plotting_tools table if it doesn't already exist
     ## Note: SQLite doesn't have schemas like PostgreSQL, so we'll use table naming convention
-    dbExecute(conn, "CREATE TABLE IF NOT EXISTS plotting_tools_map_tools (
+    DBI::dbExecute(conn, "CREATE TABLE IF NOT EXISTS plotting_tools_map_tools (
            description TEXT PRIMARY KEY,
            plot_object BLOB
           );")
@@ -422,14 +436,14 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
 
     ## Insert into the table using prepared statement via DBI
     ## This handles binary data properly without needing special escape functions
-    dbExecute(
+    DBI::dbExecute(
         conn, 
         "INSERT OR IGNORE INTO plotting_tools_map_tools (description, plot_object) VALUES (?, ?)",
         params = list('map_outline', list(ser_uk.line))
     )
 
     ## Close the connection
-    dbDisconnect(conn)
+    DBI::dbDisconnect(conn)
     
 }
 
@@ -552,6 +566,7 @@ save_otu_map <- function(OTU_name,
                          Grid_file,
                          UK_poly_file,
                          UK_line_file,
+                         maps_db = "maps_db.sqlite",
                          Make_png = FALSE) {
 
   # Read input data
@@ -614,13 +629,13 @@ save_otu_map <- function(OTU_name,
   serialized_sf <- list(serialize(newmap, NULL))
     
   # Connect to maps database
-  maps_db <- DBI::dbConnect(RSQLite::SQLite(), "maps_db.sqlite", synchronous = "normal")
-  DBI::dbExecute(maps_db, "PRAGMA busy_timeout = 5000;")
+  maps_db_conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db, synchronous = "normal")
+  DBI::dbExecute(maps_db_conn, "PRAGMA busy_timeout = 5000;")
 
   # Insert map data into database
   sql_command_maps <- "insert or replace into maps_table (otu_name, map_object, break_points) values (?, ?, ?)"
-  DBI::dbExecute(maps_db, sql_command_maps, params = list(OTU_name, serialized_sf, break_points_json))
-  DBI::dbDisconnect(maps_db)
+  DBI::dbExecute(maps_db_conn, sql_command_maps, params = list(OTU_name, serialized_sf, break_points_json))
+  DBI::dbDisconnect(maps_db_conn)
 
   # Generate PNG visualization if requested
   if (Make_png) {
