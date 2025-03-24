@@ -616,6 +616,7 @@ save_otu_map <- function(OTU_name,
 
   # Generate PNG visualization if requested
   if (Make_png) {
+  }
 }
 
 ### 3.2 Generate maps per OTU
