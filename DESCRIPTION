@@ -21,4 +21,3 @@ Imports:
     DBI (>= 1.2.3),
     sp (>= 2.1),
     sf,
-    tmap
