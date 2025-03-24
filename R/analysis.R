@@ -257,7 +257,12 @@ prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_ab
     Taxonomy <- splitstackshape::cSplit(indt = Taxonomy, splitCols = 2, sep = ";")
     
     # Rename taxonomy columns to the correct levels
-    colnames(Taxonomy) <- c("hit", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+    num_columns = length((Taxonomy))
+    if (num_columns == 9){
+        colnames(Taxonomy) <- c("hit", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+    } else if (num_columns == 8){
+        colnames(Taxonomy) <- c("hit", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")                                                                                                        }
+
     row.names(Taxonomy) <- Taxonomy$hit
     
     # Filter to match OTU table
@@ -299,7 +304,7 @@ prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_ab
 #' )
 #' 
 #' @export
-format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv, ukcoast_line_shp) {
+format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv, ukcoast_line_shp, filtered_environmental_csv) {
     print("Debug: Load files")
     
     # Read the input files
@@ -323,9 +328,12 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     # Connect to environmental database and create table
     environmental_db <- DBI::dbConnect(RSQLite::SQLite(), "environmental_db.sqlite")
     DBI::dbExecute(conn = environmental_db, statement = sql_command)
-    
+
+    #ensure first column is called "hit"
+    colnames(environmental_csv)[1] <- "hit"
+
     # Fill table and disconnect
-    DBI::dbWriteTable(environmental_db, "env_table", environmental_csv, append = TRUE, row.names = FALSE)
+    DBI::dbWriteTable(environmental_db, "env_table", environmental_csv[1:4], append = TRUE, row.names = FALSE)
     DBI::dbDisconnect(environmental_db)
 
     
