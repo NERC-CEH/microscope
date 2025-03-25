@@ -130,12 +130,12 @@ clean_environmental_metadata <- function(enviroment_data, filtered_env_data) {
 #' )
 #'
 #' @export
-clean_OTU_table <- function(OTU_file, filtered_OTU_file, OTU_table_occupancy_filter = 30) {
+clean_OTU_table <- function(OTU_file, filtered_OTU_file, OTU_table_occupancy_filter = 30, sample_read_number = 5000) {
     # Read in OTU table
     OTU_tab <- data.frame(data.table::fread(OTU_file), row.names = 1, check.names = FALSE)
     
     # Remove samples with reads less than 5000
-    OTU_tab_sub <- OTU_tab[rowSums(OTU_tab) > 5000, ]
+    OTU_tab_sub <- OTU_tab[rowSums(OTU_tab) > sample_read_number, ]
     
     # Convert to presence/absence to filter by occupancy
     OTU_tab_sub_pa <- (OTU_tab_sub != 0) * 1
