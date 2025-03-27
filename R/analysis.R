@@ -259,7 +259,7 @@ prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_ab
     # Rename taxonomy columns to the correct levels
     num_columns = length((Taxonomy))
     if (num_columns == 9){
-        colnames(Taxonomy) <- c("hit", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+        colnames(Taxonomy) <- c("hit", "Kingdom", "Supergroup", "Division", "Class", "Order", "Family", "Genus", "Species")
     } else if (num_columns == 8){
         colnames(Taxonomy) <- c("hit", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")                                                                                                        }
 
@@ -354,12 +354,67 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     DBI::dbExecute(conn = abundance_db, statement = sql_command)
 
     #ensure first column is called "hit"
-    colnames(abundance_csv)[1] <- "hit"
+    #colnames(abundance_csv)[1] <- "hit"
     
     # Fill table and disconnect
-    DBI::dbWriteTable(abundance_db, "abund_table", abundance_csv, append = TRUE, row.names = FALSE)
-    DBI::dbDisconnect(abundance_db)
+    #DBI::dbWriteTable(abundance_db, "abund_table", abundance_csv, append = TRUE, row.names = FALSE)
+    #DBI::dbDisconnect(abundance_db)
 
+
+    ## data frame:
+    #abundance_csv
+
+    ## Ensure first column is named "hit"
+ #   colnames(abundance_csv)[1] <- "hit"
+ #   
+ #   ## Establish database connection
+ #   abundance_db <- DBI::dbConnect(RSQLite::SQLite(), db_path)
+ #   
+#    tryCatch({
+#        ## Identify columns to split
+#        all_columns <- colnames(abundance_csv)[-1]  # Exclude "hit" column
+#        
+#        
+#        ## Calculate number of tables needed
+#        num_tables <- ceiling(length(all_columns) / (max_columns - 1))
+#        
+ ##       ## Create tables
+ #       for (i in 1:num_tables) {
+ #           ## Determine columns for this table
+ #           start_idx <- (i - 1) * (max_columns - 1) + 1
+ #           end_idx <- min(start_idx + max_columns - 2, length(all_columns))
+ #           
+  #          ## Select columns for this table
+  #          table_columns <- c("hit", all_columns[start_idx:end_idx])
+ #           
+ #           ## Create table name
+ #           table_name <- paste0("abund_table_", i)
+ #           
+ #           ## Create SQL command for table creation
+ #           sql_command <- sprintf(
+ #               "CREATE TABLE IF NOT EXISTS %s (hit character varying(30), %s numeric, PRIMARY KEY (hit))",
+ #               table_name,
+ #               paste(table_columns[-1], collapse = ' numeric, ')
+ #           )
+ #           
+ #           ## Execute table creation
+ #           DBI::dbExecute(abundance_db, sql_command)
+  #          
+  #          ## Write data to table
+  #          table_df <- abundance_csv[, table_columns]
+  #          DBI::dbWriteTable(abundance_db, table_name, table_df, append = FALSE, row.names = FALSE)
+  #      }
+  #      
+  #      ## Disconnect from database
+  #      DBI::dbDisconnect(abundance_db)
+  #  }, error = function(e) {
+  #      ## Ensure connection is closed in case of error
+  #      if (exists('abundance_db') && DBI::dbIsValid(abundance_db)) {
+  #          DBI::dbDisconnect(abundance_db)
+  #      }
+  #      stop(paste("Error splitting table:", e$message))
+  #  })
+    
     print("Taxa")
     # Create taxonomy table
     sql_command_taxonomy <- sprintf(
@@ -623,7 +678,7 @@ save_otu_map <- function(OTU_name,
 
   # Store breakpoints as JSON for db
   sf_json <- jsonlite::toJSON(sf::st_geometry(newmap))
-  break_points_json <- jsonlite::toJSON(at)
+  break_points_json <- jsonlite::toJSON(at, digits =NA) #NA prevents rounding
 
   # convert to list when serialising as SQLite sees serialised as many objects  
   serialized_sf <- list(serialize(newmap, NULL))
