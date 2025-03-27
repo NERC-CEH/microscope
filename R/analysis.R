@@ -310,7 +310,6 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
                                    taxonomy_db = "taxonomy_db.sqlite",
                                    otu_db = "otu_db.sqlite",
                                    maps_db = "maps_db.sqlite") {
-    print("Debug: Load files")
     
     # Read the input files
     environmental_csv <- read.csv(filtered_environmental_csv)
@@ -318,13 +317,6 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     taxonomy_csv <- read.csv(filtered_taxonomy_csv)
     otu_csv <- read.csv(filtered_otu_csv)
 
-
-#  dbExecute(conn=conn,'CREATE TABLE IF NOT EXISTS env_attributes.env_attributes_all(sample character varying(250),avc_code numeric ,avc character varying(250),ph numeric,CONSTRAINT env_attributes_all_pkey PRIMARY KEY (sample));')
-  #populate env table if any primary keys already exist errors will be produced
-#  append_cmd=sqlAppendTable(con=conn,table=Id(schema="env_attributes",table="env_attributes_all"), values =Env_for_SQL, row.names = FALSE )
-#    dbExecute(conn=conn,statement=append_cmd)
-
-    print("Env")
     # Create environmental table
     sql_command <- sprintf(
         "create table if not exists env_table (hit character varying(250), avc_code numeric, avc character varying(250), pH numeric, primary key (hit))"
@@ -342,7 +334,6 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     DBI::dbDisconnect(environmental_db)
 
     
-    print("abund")
     # Create abundance table
     sql_command <- sprintf(
         "create table if not exists abund_table (hit character varying(30), %s numeric, primary key (hit))",
@@ -353,69 +344,6 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     abundance_db <- DBI::dbConnect(RSQLite::SQLite(), abundance_db)
     DBI::dbExecute(conn = abundance_db, statement = sql_command)
 
-    #ensure first column is called "hit"
-    #colnames(abundance_csv)[1] <- "hit"
-    
-    # Fill table and disconnect
-    #DBI::dbWriteTable(abundance_db, "abund_table", abundance_csv, append = TRUE, row.names = FALSE)
-    #DBI::dbDisconnect(abundance_db)
-
-
-    ## data frame:
-    #abundance_csv
-
-    ## Ensure first column is named "hit"
- #   colnames(abundance_csv)[1] <- "hit"
- #   
- #   ## Establish database connection
- #   abundance_db <- DBI::dbConnect(RSQLite::SQLite(), db_path)
- #   
-#    tryCatch({
-#        ## Identify columns to split
-#        all_columns <- colnames(abundance_csv)[-1]  # Exclude "hit" column
-#        
-#        
-#        ## Calculate number of tables needed
-#        num_tables <- ceiling(length(all_columns) / (max_columns - 1))
-#        
- ##       ## Create tables
- #       for (i in 1:num_tables) {
- #           ## Determine columns for this table
- #           start_idx <- (i - 1) * (max_columns - 1) + 1
- #           end_idx <- min(start_idx + max_columns - 2, length(all_columns))
- #           
-  #          ## Select columns for this table
-  #          table_columns <- c("hit", all_columns[start_idx:end_idx])
- #           
- #           ## Create table name
- #           table_name <- paste0("abund_table_", i)
- #           
- #           ## Create SQL command for table creation
- #           sql_command <- sprintf(
- #               "CREATE TABLE IF NOT EXISTS %s (hit character varying(30), %s numeric, PRIMARY KEY (hit))",
- #               table_name,
- #               paste(table_columns[-1], collapse = ' numeric, ')
- #           )
- #           
- #           ## Execute table creation
- #           DBI::dbExecute(abundance_db, sql_command)
-  #          
-  #          ## Write data to table
-  #          table_df <- abundance_csv[, table_columns]
-  #          DBI::dbWriteTable(abundance_db, table_name, table_df, append = FALSE, row.names = FALSE)
-  #      }
-  #      
-  #      ## Disconnect from database
-  #      DBI::dbDisconnect(abundance_db)
-  #  }, error = function(e) {
-  #      ## Ensure connection is closed in case of error
-  #      if (exists('abundance_db') && DBI::dbIsValid(abundance_db)) {
-  #          DBI::dbDisconnect(abundance_db)
-  #      }
-  #      stop(paste("Error splitting table:", e$message))
-  #  })
-    
-    print("Taxa")
     # Create taxonomy table
     sql_command_taxonomy <- sprintf(
         "create table taxonomy_table (hit character varying (30), %s character varying (250), primary key (hit))",
@@ -440,7 +368,6 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     transpose_otu_csv = as.data.frame(transpose_otu_csv, stringsAsFactors = FALSE)
     otu_csv <- data.frame(hit = row.names(transpose_otu_csv), transpose_otu_csv, check.names = FALSE)
     
-    print("OTU")
     # Create OTU table
     sql_command_otu <- sprintf(
         "create table otu_table (hit character varying (30), %s character varying (30), primary key (hit))",
@@ -459,7 +386,6 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     DBI::dbWriteTable(otu_db, "otu_table", otu_csv, append = TRUE, row.names = FALSE)
     DBI::dbDisconnect(otu_db)
 
-    print("Maps 1")
 
     #turns out that varchar is ignored by SQLlite, it only uses text.  Can be great to indicate to developers that we want short text though.
     # Create maps table
@@ -472,7 +398,6 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
    
     ## Maps table will be filled in step 3 using save_otu_map function
 
-    print("Maps 2")
 
     conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db)
 
@@ -772,7 +697,6 @@ maps_parallelise <- function(
     filtered_OTU = data.table::fread(filtered_OTU_file)
     OTU_names = colnames(filtered_OTU)
     OTU_name = OTU_names[-1]
-    print(OTU_name)
     
     results <- parallel::parSapply(cl, OTU_name, run_save_otu_map)
     parallel::stopCluster(cl)
@@ -834,52 +758,3 @@ make_blast_bash <- function(fasta_file, blast_db_out) {
   system(paste("makeblastdb -in", shQuote(fasta_file),
                "-dbtype nucl -out", shQuote(blast_db_out)))
 }
-
-## create_app_python <-function(){
-## #### 4 Create app front-end from template
-    
-##     ## Using python to edit r code - find python easiest option for file handling
-    
-##     ## **Python:**
-##     ## ```{python create app, eval=FALSE}
-##     import re
-##     ## get blank template path using R App_template parameter  
-##     blank_template=r.params["App_template_input_dir"]+"/Blank_taxonomic_explorer_app_with_functional_place_holders.R"
-##     ## open blank_template
-##     with open(blank_template,'r') as blank_template_file:
-##                                          ## open output file  
-##                                          with open(r.Output_dir_with_occ+"/App/App.R",'w') as customised_file:
-## ### loop over lines 
-##     for line in blank_template_file:
-##                     ## empty array for any placeholder strings that need to be replaced within that line 
-##                     occurence_strings=[]
-##     ## get all indices where placeholder  starts("<--")
-##     occurence_starts= [i.start() for i in re.finditer("<--",line)]
-##     ## if there are any beginnings of placeholders in the line  continue   
-##     if (len(occurence_starts)!=0):
-##         ## get all indices  of the end of place holder/s "-->"  
-##         occurence_ends= [i.start() for i in re.finditer("-->",line)]
-##     ## loop over number of start indices per line (as may be multiple placeholders per line)     
-##     for i in range(len(occurence_starts)):
-##                  ## get whole place holder string  ,occurence_ends are the start indices of "-->" string so add 3
-##                  occurence_string=line[occurence_starts[i]:occurence_ends[i]+3]
-##     ## if not in occurrence_strings array already append
-##     if (occurence_string not in occurence_strings):
-##         occurence_strings.append(occurence_string)
-##     ## define new line        
-##     new_line=line
-##     ## for every unique place holder string replace placeholder with relevant r parameter(exception being Schema_table_prefix_modified as it is not a parameter)   
-##     for occurence_string in occurence_strings:
-##                                 parameter=occurence_string.split("<--specified_")[1].split("-->")[0]
-##     if(parameter=="Schema_table_prefix"):
-##         new_line=new_line.replace(occurence_string,r.Schema_table_prefix_modified)
-##     else:
-##         new_line=new_line.replace(occurence_string,r.params[parameter])
-##     ## ok lets write the new modified line to our output file       
-##     customised_file.write(new_line)
-##     ## if no placeholder strings write original line to output file        
-##     else:  customised_file.write(line)      
-    
-##     ##  ```
-##     ##  App should now be an executable 
-## }
