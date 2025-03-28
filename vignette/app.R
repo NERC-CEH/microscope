@@ -10,6 +10,8 @@ library(RSQLite)
 library(sf)
 library(DT)
 library(bslib)
+library(jsonlite)
+library(splitstackshape)
 
 devtools::source_url("https://github.com/NERC-CEH/UKCEH_shiny_theming/blob/main/theme_elements.R?raw=TRUE")
 
@@ -547,10 +549,15 @@ server <- function(input, output, session) {
     }
   })
   
+
   # Close connections when app terminates
   shiny::onSessionEnded(function() {
-    DBI::dbDisconnect(db_conn_microscope)
-    DBI::dbDisconnect(db_conn_maps)
+    if (!is.null(isolate(db_conn_microscope()))) {
+      DBI::dbDisconnect(isolate(db_conn_microscope()))
+    }
+    if (!is.null(isolate(db_conn_maps()))) {
+      DBI::dbDisconnect(isolate(db_conn_maps()))
+    }
   })
 }
 
