@@ -7,7 +7,11 @@
 format_otu_for_Rsqlite(
   filtered_abundance_csv,
   filtered_taxonomy_csv,
-  filtered_otu_csv
+  filtered_otu_csv,
+  ukcoast_line_shp,
+  filtered_environmental_csv,
+  molecular_db = "molecular_db.sqlite",
+  maps_db = "maps_db.sqlite"
 )
 }
 \arguments{
@@ -16,6 +20,8 @@ format_otu_for_Rsqlite(
 \item{filtered_taxonomy_csv}{Character string. Path to the filtered taxonomy file.}
 
 \item{filtered_otu_csv}{Character string. Path to the filtered OTU table file.}
+
+\item{ukcoast_line_shp}{Character string. Path to the uk coast shapefile.}
 }
 \value{
 None. The function creates SQLite database files with the appropriate tables.
@@ -37,6 +43,7 @@ format_otu_for_Rsqlite(
   "output/Supplementary/Tables_in_SQL/abundance_stats.csv",
   "output/Supplementary/Tables_in_SQL/Taxonomy.csv",
   "output/Supplementary/Tables_in_SQL/OTU_abund.csv"
+  "data/00_raw_data/uk_map_objs/ukcoast_line.shp"
 )
 
 }

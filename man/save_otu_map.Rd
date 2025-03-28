@@ -11,6 +11,7 @@ save_otu_map(
   Grid_file,
   UK_poly_file,
   UK_line_file,
+  maps_db = "maps_db.sqlite",
   Make_png = FALSE
 )
 }

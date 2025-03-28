@@ -4,7 +4,12 @@
 \alias{clean_OTU_table}
 \title{Clean up the OTU table}
 \usage{
-clean_OTU_table(OTU_file, filtered_OTU_file, OTU_table_occupancy_filter = 30)
+clean_OTU_table(
+  OTU_file,
+  filtered_OTU_file,
+  OTU_table_occupancy_filter = 30,
+  sample_read_number = 5000
+)
 }
 \arguments{
 \item{OTU_file}{Character string. Path to the pre-processed OTU table file.}
