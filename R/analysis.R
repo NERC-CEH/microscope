@@ -328,7 +328,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     colnames(environmental_csv)[1] <- "hit"
 
     # Fill table and disconnect
-    DBI::dbWriteTable(conn_molecular_db, "env_table", environmental_csv[1:4], append = TRUE, row.names = FALSE, overwrite = TRUE)
+    DBI::dbWriteTable(conn_molecular_db, "env_table", environmental_csv[1:4], row.names = FALSE, overwrite = TRUE)
 
     # Create abundance table
     sql_command_abundance_table <- sprintf(
@@ -337,7 +337,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     )
 
     # Fill table and disconnect
-    DBI::dbWriteTable(conn_molecular_db, "abund_table", abundance_csv, append = TRUE, row.names = FALSE, overwrite = TRUE)
+    DBI::dbWriteTable(conn_molecular_db, "abund_table", abundance_csv, row.names = FALSE, overwrite = TRUE)
 
     
     ## Create table
@@ -357,7 +357,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     DBI::dbExecute(conn = conn_molecular_db, statement = sql_command_taxonomy_table)
     
     # Fill table and disconnect
-    DBI::dbWriteTable(conn_molecular_db, "taxonomy_table", taxonomy_csv, append = TRUE, row.names = FALSE, overwrite = TRUE)
+    DBI::dbWriteTable(conn_molecular_db, "taxonomy_table", taxonomy_csv, row.names = FALSE, overwrite = TRUE)
   
     ## Create OTU table
     sql_command_otu_table <- sprintf(
@@ -379,7 +379,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
 
     
     ## Fill table
-    DBI::dbWriteTable(conn_molecular_db, "otu_table", otu_csv, append = TRUE, row.names = FALSE, overwrite = TRUE)
+    DBI::dbWriteTable(conn_molecular_db, "otu_table", otu_csv, row.names = FALSE, overwrite = TRUE)
 
 
     ## Disconnect from database
