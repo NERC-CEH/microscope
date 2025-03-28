@@ -11,16 +11,6 @@ library(sf)
 library(DT)
 library(bslib)
 
-
-# Set resource path
-#absolute_path <- "/data/notebooks/jupyterlab-0897204boost/microscope_bacterial_workflow/db_data/"
-#shiny::addResourcePath('data', absolute_path)
-
-
-
-
-#rather than reading this in have just copied and pasted so I could edit the left padding for the title
-
 devtools::source_url("https://github.com/NERC-CEH/UKCEH_shiny_theming/blob/main/theme_elements.R?raw=TRUE")
 
 #theming with bslib
@@ -55,8 +45,6 @@ UKCEH_titlePanel <- function(title = "UKCEH Shiny app", windowTitle = title){
     style = "padding: 30px;"
   )
 }
-
-
 
 
 # Custom dashboard header function (to remove default buttons)
@@ -121,20 +109,9 @@ ui <- fluidPage(
         div(
           id = "more_info",
           tags$h4(tags$b("Summary")),
-          tags$p(
-            "ID-TaxER provides an interface to explore potential soil habitat preferences of bacterial taxa derived from 16S rRNA gene sequencing. Query sequences are blasted against a database of representative sequences of 97% OTUs obtained from a large soil survey conducted across Britain (the Countryside Survey). Each sequence in the database is linked to an additional trait matrix containing taxonomic assignments as well as environmentally derived information about that OTU (e.g pH or habitat preference). Results are displayed as an interactive table of hits with percentage match to a CS sequence, and associated taxonomy (greengenes). Upon selecting a hit, a plot of model fit to soil parameters is displayed indicating for example the pH optima of that taxon, as well as habitat preferences and spatial distribution (currently Britain only)."
-          ),
-          tags$h4(tags$b("Limitations")),
-          tags$p("The database encompasses the V3-V4 region of the 16SrRNA, amplified with 341f/806r primers. Queries which do not cover this region will obviously give incorrect results, and additionally taxa poorly amplified with these primers will be under represented. Importantly this tool is based on homology mapping to a short portion of the conserved 16S rRNA gene, and so all the usual limitations apply regarding accuracy of taxonomic (and habitat preference) assignment. It is therefore for research purposes only."),
-          tags$h4(tags$b("Ongoing work")),
-          tags$p(
-            "A", tags$a(href = "https://github.com/brijon/ID_TaxER-Custom-Database-for-DADA2", "github", target = "_blank"), 
-            " page has been set up for batch sequence querying using Dada2. We are exploring options to allow users to upload their own ecological trait information to the trait matrix (e.g if a sequence with high homology to a CS sequence comes up in user experiments as an indicator of warming, drought, plant species X etc then it would be useful to capture this information in the trait matrix). We also have similar ITS and 18S datasets which could be developed in a similar portal if enough interest."
-          ),
-          tags$h4(tags$b("Contact:")),
-          tags$p("Briony Jones", tags$b("(brijon@ceh.ac.uk)")),
-          tags$p("Rob Griffiths", tags$b(" (rig@ceh.ac.uk)"))
-        )
+          shiny::tags$p("Re-implimentation of https://connect-apps.ceh.ac.uk/ID-TaxER/ using a modular workflow to build the data behind the app.
+        ID-TaxER provides an interface to explore potential soil habitat preferences of bacterial taxa derived from 16S rRNA gene sequencing. Query sequences are blasted against a database of representative sequences of 97% OTUs obtained from a large soil survey conducted across Britain (the Countryside Survey). Each sequence in the database is linked to an additional trait matrix containing taxonomic assignments as well as environmentally derived information about that OTU (e.g pH or habitat preference). Results are displayed as an interactive table of hits with percentage match to a CS sequence, and associated taxonomy (greengenes). Upon selecting a hit, a plot of model fit to soil parameters is displayed indicating for example the pH optima of that taxon, as well as habitat preferences and spatial distribution (currently Britain only).")
+          )
       ),
       
       br(),
