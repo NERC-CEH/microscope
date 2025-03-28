@@ -359,6 +359,12 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     # Fill table and disconnect
     DBI::dbWriteTable(conn_molecular_db, "taxonomy_table", taxonomy_csv, row.names = FALSE, overwrite = TRUE)
   
+    ## OTU table preparation (transpose due to column limit)
+    rownames(otu_csv) <- otu_csv[, 1]
+    transpose_otu_csv <- t(otu_csv)
+    transpose_otu_csv = as.data.frame(transpose_otu_csv, stringsAsFactors = FALSE)
+    otu_csv <- data.frame(hit = row.names(transpose_otu_csv), transpose_otu_csv, check.names = FALSE)
+
     ## Create OTU table
     sql_command_otu_table <- sprintf(
         "CREATE TABLE IF NOT EXISTS otu_table (hit character varying (30), %s character varying (30), primary key (hit))",
@@ -369,15 +375,6 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
         )
     )
 
-    ## OTU table preparation (transpose due to column limit)
-    rownames(otu_csv) <- otu_csv[, 1]
-    transpose_otu_csv <- t(otu_csv)
-    transpose_otu_csv = as.data.frame(transpose_otu_csv, stringsAsFactors = FALSE)
-    otu_csv <- data.frame(hit = row.names(transpose_otu_csv), transpose_otu_csv, check.names = FALSE)
-
-    print(paste0("Rows: ", nrow(otu_csv)))
-    print(paste0("Columns: ", ncol(otu_csv)))
-    
     DBI::dbExecute(conn = conn_molecular_db, statement = sql_command_otu_table)
 
     
