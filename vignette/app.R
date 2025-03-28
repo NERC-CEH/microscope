@@ -74,7 +74,7 @@ ui <- fluidPage(
   
   # Application title
   #div(style = "text-align: center;",
-  UKCEH_titlePanel("ID-TaxER - Identification of Taxa & Environment Responses"),
+  UKCEH_titlePanel("Microscope"),
   #),
   #change tab selection color
   #change side panel colour
@@ -108,17 +108,7 @@ ui <- fluidPage(
                  #here I want the buttons to not be too close vertically so have used fluid rows
                  fluidRow(style='padding-left:20px',actionButton("more_info_button", "More Information",icon=icon("info-circle"),  style="color: #fff; background-color: #2f7ece; border-color: #2f7ece",width=200)),
                  fluidRow(style='padding-top:15px; padding-left:20px',actionButton("github_button", "  GitHub Page  ",onclick ="window.open('https://github.com/brijon/ID-TaxER-flat-files', '_blank')", style="color:#fff; background-color: #2f7ece; border-color: #2f7ece",width=200)),
-            
                  
-                 
-                 # actionButton("more_info_button", "More Information",   style="color: #fff; background-color: #2f7ece;
-                 # border-color: #2f7ece",width=200),
-                 # hr(),
-                 ##github button
-                 #actionButton("github_button", "  GitHub Page  ",onclick ="window.open('https://github.com/brijon/ID-TaxER-flat-files', '_blank')",
-                 #            style="color:#fff; background-color: #2f7ece; border-color: #2f7ece",width=200)
-                 #end of sidebarPanel
-                 #width=2),
     ),
     
     mainPanel(width = 8, 
@@ -154,37 +144,41 @@ ui <- fluidPage(
               br(),
               #various buttons               
               actionButton("blast", "Blast",style="color: #fff; background-color:#2f7ece"),
-              actionButton("resetSequence", "Clear Input",style="color: #fff; background-color:#34b8c7"),
+              actionButton("clearInput", "Clear Input",style="color: #fff; background-color:#34b8c7"),
               actionButton("exampleSequence", "Example Sequence",style="color: #fff; background-color:#90c164"),
+              # Add the SQLite DB selection UI here
+              
+              selectInput("db_choice", "Choose SQLite Database:",
+                          choices = list("16s" = "data/16s",
+                                         "18s" = "data/18s/"
+                          ),
+                          selected = "data/16s"),
+              actionButton("connect_btn", "Connect to Database",style="color: #fff; background-color:#2f7ece"),
               #area where any warning messages appear                
               span(textOutput("Warning"),style="color:red;font-size:17px  "),
               
               #hidden results section            
-              shinyjs::hidden(div(id="Results", hr(style = "border-color: #fff;"),
+              shinyjs::hidden(div(id="Results",
+                                  hr(style = "border-color: #fff;"),
                                   #===================================================================================================================================================================================================================   
                                   #hits table
-                                  fluidRow(column(width=7,style='padding:0px;',hr(style = "border-color: #fff;"),HTML('<center><h4>Top Hits</h4></center>'),box(class = "custom-box",div(DT::dataTableOutput("blastout"),style = "font-size: 75%"),width=600,height=610)),
+                                  fluidRow(column(width=7,
+                                                  style='padding:0px;',
+                                                  hr(style = "border-color: #fff;"),
+                                                  HTML('<center><h4>Top Hits</h4></center>'),
+                                                  box(class = "custom-box",
+                                                      div(DT::dataTableOutput("Main_output_table"),
+                                                          style = "font-size: 75%"),
+                                                      width=600,
+                                                      height=610)
+                                                  ),
                                            #===================================================================================================================================================================================================================                  
                                            #define collumn ie portion of interface to the right for plots etc                
                                            column(width=5,style='padding-left:70px; padding-right:0px;padding-top:35px;',hr(style = "border-color: #fff;"),
                                                   tabsetPanel(id="plotTabset",
                                                               #===================================================================================================================================================================================================================   
-                                                              #first plot HOF                
-                                                              tabPanel(title="pH Model",box(id="plotbox",plotOutput('modelplot'), width=350,height=425
-                                                                                            #end of box 
-                                                              )
-                                                              #end of plot tab panel
-                                                              ),
-                                                              #===================================================================================================================================================================================================================   
-                                                              #LOESS plot              
-                                                              tabPanel(title="pH LOESS",box(id="plotbox2",plotOutput('loessplot'), width=350,height=425
-                                                                                            #end of box 
-                                                              )
-                                                              #end of plot tab panel
-                                                              ),
-                                                              #===================================================================================================================================================================================================================   
                                                               #Map                
-                                                              tabPanel(title="GB Map",box(id="Map_box",withSpinner(plotOutput('map'),type=7),width=350,height=425
+                                                              tabPanel(title="GB Map",box(id="Map_box",withSpinner(plotOutput('OTU_map'),type=7),width=350,height=425
                                                                                           #end of box 
                                                               )
                                                               #		end of plot tab panel
@@ -192,7 +186,7 @@ ui <- fluidPage(
                                                               #===================================================================================================================================================================================================================   
                                                               #AVC plot
                                                               tabPanel(title="Habitats",
-                                                                       box(id="AVC_plotbox",plotOutput('AVC_box_plot'),width=350,height=425
+                                                                       box(id="AVC_plotbox",plotOutput('OTU_avc_boxplot'),width=350,height=425
                                                                            # end of box
                                                                        )
                                                                        # end of plot tab panel
@@ -224,7 +218,7 @@ ui <- fluidPage(
                                            )  
                                            #===================================================================================================================================================================================================================                               
                                            #blast output and taxonomy
-                                           ,hr(style = "border-color: #fff;"),box(class = "custom-box",div(fluidRow(column(width=12,HTML('<h4><center>Blast Output and Taxonomy</center></h4>'),DT::dataTableOutput("BlastResults"),DT::dataTableOutput("OTU.Taxon")
+                                           ,hr(style = "border-color: #fff;"),box(class = "custom-box",div(fluidRow(column(width=12,HTML('<h4><center>Blast Output and Taxonomy</center></h4>'),DT::dataTableOutput("BlastResults"),DT::dataTableOutput("OTU_blast_match")
                                                                                                                            #end of box
                                            ))
                                            #end of column
@@ -238,8 +232,6 @@ ui <- fluidPage(
               )
               #end of hidden java section      
               ),#link to privacy privacy
-              hr(style = "border-color: #fff;"),
-              img(src="logos_narrow.svg"),
               hr(style = "border-color: #fff;"),
               div(style = "text-align: center;", a("UKCEH Privacy Policy", href = "https://www.ceh.ac.uk/privacy-notice",class="custom_link")),
               
@@ -277,7 +269,7 @@ server <- function(input, output, session) {
       dbDisconnect(db_conn_maps())
       db_conn_maps(NULL)  # Reset connection
     }
-
+    
     # Get the selected database path
     selected_path <- paste0(input$db_choice)
     
@@ -290,9 +282,9 @@ server <- function(input, output, session) {
     
     db_conn_microscope(conn_microscope)
     db_conn_maps(maps_db)
-      })
+  })
   
-
+  
   # Functions to call env and uk_line dynamically depending on data source.  
   env <- function() {
     query <- "SELECT * FROM env_table;"
@@ -326,7 +318,7 @@ server <- function(input, output, session) {
       # Create blast command
       
       cmd <- paste('echo -e ">Query seq\n', query, '"', 
-                  '|/data/conda/microscope/bin/blastn -db ',blast_path(),'Blast_DB/Blast_DB -num_alignments 20 -evalue 0.001 -outfmt 7',sep='')
+                   '|/data/conda/microscope/bin/blastn -db ',blast_path(),'Blast_DB/Blast_DB -num_alignments 20 -evalue 0.001 -outfmt 7',sep='')
       
       # Run system command and capture output
       blast_capture <- system(paste("/bin/bash -c", shQuote(cmd)), intern = TRUE)
@@ -344,7 +336,7 @@ server <- function(input, output, session) {
         # Remove first column with query ID
         blast_capture_df <- blast_capture_df[, -1]
         
-
+        
         # SQL query to get taxonomy and abundance data
         SQL_command <- paste("
           SELECT taxonomy_table.*, abund_table.abundance_rank, abund_table.occupancy_proportion
@@ -435,10 +427,10 @@ server <- function(input, output, session) {
         # Get OTU from run_sequence output
         OTU <- run_sequence_output$tax_and_stats[s, 2]
         par(mar = c(4, 4, 1, 4))
-
+        
         # Get relevant map
         otu_data <- DBI::dbGetQuery(db_conn_maps(), 
-          paste("SELECT map_object, break_points FROM maps_table WHERE otu_name='", toString(OTU), "';", sep = ""))
+                                    paste("SELECT map_object, break_points FROM maps_table WHERE otu_name='", toString(OTU), "';", sep = ""))
         
         # Convert from bytea to R object
         #r_object_map <- unserialize(unescape_bytea_map$map_object[[1]])
@@ -494,17 +486,17 @@ server <- function(input, output, session) {
         
         # Set plot margins
         par(mar = c(11, 5.8, 2, 0.4) + 0.1)
-          bxp_stats <- graphics::boxplot(abund_env[, 2] ~ ord, plot = FALSE)
-          max_whisker <- max(bxp_stats$stats[5,])  # Row 5 contains upper whiskers
-
+        bxp_stats <- graphics::boxplot(abund_env[, 2] ~ ord, plot = FALSE)
+        max_whisker <- max(bxp_stats$stats[5,])  # Row 5 contains upper whiskers
+        
         # Create boxplot
         graphics::boxplot(abund_env[, 2] ~ ord, 
-                las = 2, 
-                ylab = "", 
-                xlab = "", 
-                ylim = c(0, 1.1 * max_whisker), 
-                cex = 0.5, 
-                outline = FALSE)
+                          las = 2, 
+                          ylab = "", 
+                          xlab = "", 
+                          ylim = c(0, 1.1 * max_whisker), 
+                          cex = 0.5, 
+                          outline = FALSE)
         
         # Add title
         title(ylab = paste("Relative Abundance (", colnames(abund_env)[2], ")", sep = ""), 
@@ -545,8 +537,8 @@ server <- function(input, output, session) {
   # Example sequence button event
   shiny::observeEvent(input$exampleSequence, {
     shiny::updateTextInput(session, "mysequence", 
-      value = example_sequence()#"ACAGAGGTCTCAAGCGTTGTTCGGATTCATTGGGCGTAAAGGGTGCGTAGGTGGTGATGCAAGTCTGGTGTGAAATCTCGGGGCTCAACTCCGAAATTGCACCGGATACTGCGTGACTCGAGGACTGTAGAGGAGATCGGAATTCACGGTGTAGCAGTGAAATGCGTAGATATCGTGAGGAAGACCAGTTGCGAAGGCGGATCTCTGGGCAGTTCCTGACACTGAGGCACGAAGGCCAGGGGAGCAAACGGG")
-  )
+                           value = example_sequence()#"ACAGAGGTCTCAAGCGTTGTTCGGATTCATTGGGCGTAAAGGGTGCGTAGGTGGTGATGCAAGTCTGGTGTGAAATCTCGGGGCTCAACTCCGAAATTGCACCGGATACTGCGTGACTCGAGGACTGTAGAGGAGATCGGAATTCACGGTGTAGCAGTGAAATGCGTAGATATCGTGAGGAAGACCAGTTGCGAAGGCGGATCTCTGGGCAGTTCCTGACACTGAGGCACGAAGGCCAGGGGAGCAAACGGG")
+    )
   }
   )
   
@@ -567,4 +559,5 @@ server <- function(input, output, session) {
 
 # Run the application 
 shiny::shinyApp(ui = ui, server = server)
+
 
