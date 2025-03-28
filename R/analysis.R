@@ -305,10 +305,7 @@ prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_ab
 #' 
 #' @export
 format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv, ukcoast_line_shp, filtered_environmental_csv,
-                                   environmental_db = "environmental_db.sqlite",
-                                   abundance_db = "abundance_db.sqlite",
-                                   taxonomy_db = "taxonomy_db.sqlite",
-                                   otu_db = "otu_db.sqlite",
+                                   molecular_db = "molecular_db.sqlite",
                                    maps_db = "maps_db.sqlite") {
     
     # Read the input files
@@ -317,36 +314,38 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     taxonomy_csv <- read.csv(filtered_taxonomy_csv)
     otu_csv <- read.csv(filtered_otu_csv)
 
-    # Create environmental table
-    sql_command <- sprintf(
-        "create table if not exists env_table (hit character varying(250), avc_code numeric, avc character varying(250), pH numeric, primary key (hit))"
-    )
-    
     # Connect to environmental database and create table
-    environmental_db <- DBI::dbConnect(RSQLite::SQLite(), environmental_db)
-    DBI::dbExecute(conn = environmental_db, statement = sql_command)
+    conn_molecular_db <- DBI::dbConnect(RSQLite::SQLite(), molecular_db)
+
+    # SQL command to create table
+    sql_command_env_table <- sprintf(
+        "CREATE TABLE IF NOT EXISTS env_table (hit character varying(250), avc_code numeric, avc character varying(250), pH numeric, primary key (hit))"
+    )
+
+    DBI::dbExecute(conn = conn_molecular_db, statement = sql_command_env_table)
 
     #ensure first column is called "hit"
     colnames(environmental_csv)[1] <- "hit"
 
     # Fill table and disconnect
-    DBI::dbWriteTable(environmental_db, "env_table", environmental_csv[1:4], append = TRUE, row.names = FALSE)
-    DBI::dbDisconnect(environmental_db)
+    DBI::dbWriteTable(conn_molecular_db, "env_table", environmental_csv[1:4], row.names = FALSE, overwrite = TRUE)
 
-    
     # Create abundance table
-    sql_command <- sprintf(
-        "create table if not exists abund_table (hit character varying(30), %s numeric, primary key (hit))",
+    sql_command_abundance_table <- sprintf(
+        "CREATE TABLE IF NOT EXISTS abund_table (hit character varying(30), %s numeric, primary key (hit))",
         paste(colnames(abundance_csv)[-1], collapse = ' numeric, ')
     )
-    
-    # Connect to abundance database and create table
-    abundance_db <- DBI::dbConnect(RSQLite::SQLite(), abundance_db)
-    DBI::dbExecute(conn = abundance_db, statement = sql_command)
 
-    # Create taxonomy table
-    sql_command_taxonomy <- sprintf(
-        "create table taxonomy_table (hit character varying (30), %s character varying (250), primary key (hit))",
+    # Fill table and disconnect
+    DBI::dbWriteTable(conn_molecular_db, "abund_table", abundance_csv, row.names = FALSE, overwrite = TRUE)
+
+    
+    ## Create table
+    DBI::dbExecute(conn = conn_molecular_db, statement = sql_command_abundance_table)
+
+    ## Create taxonomy table
+    sql_command_taxonomy_table <- sprintf(
+        "CREATE TABLE IF NOT EXISTS taxonomy_table (hit character varying (30), %s character varying (250), primary key (hit))",
         paste(
             '"', colnames(taxonomy_csv)[-1], '"',
             collapse = ' charater varying(250),',
@@ -355,41 +354,41 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     )
     
     # Connect to taxonomy database and create table
-    taxonomy_db <- DBI::dbConnect(RSQLite::SQLite(), taxonomy_db)
-    DBI::dbExecute(conn = taxonomy_db, statement = sql_command_taxonomy)
+    DBI::dbExecute(conn = conn_molecular_db, statement = sql_command_taxonomy_table)
     
     # Fill table and disconnect
-    DBI::dbWriteTable(taxonomy_db, "taxonomy_table", taxonomy_csv, append = TRUE, row.names = FALSE)
-    DBI::dbDisconnect(taxonomy_db)
-    
+    DBI::dbWriteTable(conn_molecular_db, "taxonomy_table", taxonomy_csv, row.names = FALSE, overwrite = TRUE)
+  
     ## OTU table preparation (transpose due to column limit)
     rownames(otu_csv) <- otu_csv[, 1]
     transpose_otu_csv <- t(otu_csv)
     transpose_otu_csv = as.data.frame(transpose_otu_csv, stringsAsFactors = FALSE)
     otu_csv <- data.frame(hit = row.names(transpose_otu_csv), transpose_otu_csv, check.names = FALSE)
-    
-    # Create OTU table
-    sql_command_otu <- sprintf(
-        "create table otu_table (hit character varying (30), %s character varying (30), primary key (hit))",
+
+    ## Create OTU table
+    sql_command_otu_table <- sprintf(
+        "CREATE TABLE IF NOT EXISTS otu_table (hit character varying (30), %s character varying (30), primary key (hit))",
         paste(
             '"', colnames(otu_csv)[-1], '"',
             collapse = ' charater varying(250),',
             sep = ''
         )
     )
+
+    DBI::dbExecute(conn = conn_molecular_db, statement = sql_command_otu_table)
+
     
-    # Connect to OTU database and create table
-    otu_db <- DBI::dbConnect(RSQLite::SQLite(), otu_db)
-    DBI::dbExecute(conn = otu_db, statement = sql_command_otu)
-    
-    # Fill table and disconnect
-    DBI::dbWriteTable(otu_db, "otu_table", otu_csv, append = TRUE, row.names = FALSE)
-    DBI::dbDisconnect(otu_db)
+    ## Fill table
+    DBI::dbWriteTable(conn_molecular_db, "otu_table", otu_csv, row.names = FALSE, overwrite = TRUE)
+
+
+    ## Disconnect from database
+    DBI::dbDisconnect(conn_molecular_db)
 
 
     #turns out that varchar is ignored by SQLlite, it only uses text.  Can be great to indicate to developers that we want short text though.
     # Create maps table
-    sql_command_maps <- "create table maps_table (otu_name character varying (30), map_object blob, break_points text, primary key (otu_name))"
+    sql_command_maps <- "CREATE TABLE IF NOT EXISTS maps_table (otu_name character varying (30), map_object blob, break_points text, primary key (otu_name))"
     
     # Connect to maps database and create table
     maps_db_conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db)
