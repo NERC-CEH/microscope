@@ -354,8 +354,6 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     
     # Fill table and disconnect
     DBI::dbWriteTable(conn_molecular_db, "taxonomy_table", taxonomy_csv, append = TRUE, row.names = FALSE)
-    DBI::dbDisconnect(taxonomy_db)
-    
   
     ## Create OTU table
     sql_command_otu_table <- sprintf(
