@@ -8,4 +8,16 @@ Description: Reproduciple workflows for soil analysis
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2
+Imports:
+    data.table (>= 1.15.4),
+    vegan (>= 2.6-8),
+    terra (>= 1.7-78),
+    ggplot2 (>= 3.5.1),
+    gstat (>= 2.1-2),
+    parallel,
+    splitstackshape (>= 1.4.8),
+    RSQLite (>= 2.3),
+    DBI (>= 1.2.3),
+    sp (>= 2.1),
+    sf,
