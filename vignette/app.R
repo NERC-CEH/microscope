@@ -95,7 +95,7 @@ ui <- fluidPage(
       fluidRow(
         style = 'padding-top:15px; padding-left:20px',
         actionButton("github_button", "  GitHub Page  ", 
-                     onclick = "window.open('https://github.com/brijon/ID-TaxER-flat-files', '_blank')", 
+                     onclick = "window.open('https://github.com/NERC-CEH/microscope', '_blank')", 
                      style = "color:#fff; background-color: #2f7ece; border-color: #2f7ece", 
                      width = 200)
       )
