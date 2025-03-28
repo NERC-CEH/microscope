@@ -375,6 +375,9 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     transpose_otu_csv = as.data.frame(transpose_otu_csv, stringsAsFactors = FALSE)
     otu_csv <- data.frame(hit = row.names(transpose_otu_csv), transpose_otu_csv, check.names = FALSE)
 
+    print("Rows: ", nrow(otu_csv))
+    print("Columns: ", ncol(otu_csv))
+    
     DBI::dbExecute(conn = conn_molecular_db, statement = sql_command_otu_table)
 
     
