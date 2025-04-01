@@ -10,6 +10,7 @@ maps_parallelise(
   Grid_file = "data/02_processed_data/ukcoast_grid.shp",
   UK_poly_file = "data/02_processed_data/ukcoast_poly.shp",
   UK_line_file = "data/02_processed_data/ukcoast_line.shp",
+  maps_db = "data/18S_data/maps_db.sqlite",
   Make_png = FALSE
 )
 }

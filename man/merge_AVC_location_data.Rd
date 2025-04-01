@@ -4,14 +4,14 @@
 \alias{merge_AVC_location_data}
 \title{Microscope: Generate taxonomic explorer app inputs}
 \usage{
-merge_AVC_location_data(AVC_data, CS_location_data, CS_AVC_combined)
+merge_AVC_location_data(AVC_data, location_data, combined_avc_location)
 }
 \arguments{
 \item{AVC_data}{Character string. Path to input file with AVC and pH data.}
 
-\item{CS_location_data}{Character string. Path to input file with Countryside survey location data.}
+\item{location_data}{Character string. Path to input file with Countryside survey location data.}
 
-\item{CS_AVC_combined}{Character string. Path where the combined output file will be saved.}
+\item{combined_avc_location}{Character string. Path where the combined output file will be saved.}
 }
 \value{
 None. The function writes the combined data to the specified output file.

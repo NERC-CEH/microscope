@@ -33,8 +33,8 @@
 #'   the Countryside survey.
 #' 
 #' @param AVC_data Character string. Path to input file with AVC and pH data.
-#' @param CS_location_data Character string. Path to input file with Countryside survey location data.
-#' @param CS_AVC_combined Character string. Path where the combined output file will be saved.
+#' @param location_data Character string. Path to input file with Countryside survey location data.
+#' @param combined_avc_location Character string. Path where the combined output file will be saved.
 #' 
 #' @return None. The function writes the combined data to the specified output file.
 #' 
@@ -44,7 +44,7 @@
 #' @note This uses the 10km areas from Countryside survey.
 #' 
 #' @export
-merge_AVC_location_data <- function(AVC_data, CS_location_data, CS_AVC_combined) {
+merge_AVC_location_data <- function(AVC_data, location_data, combined_avc_location) {
     cs_avc <- data.table::fread(AVC_data)
     cs_location <- data.table::fread(CS_location_data)
 
