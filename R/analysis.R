@@ -548,6 +548,14 @@ save_otu_map <- function(OTU_name,
                          maps_db = "maps_db.sqlite",
                          Make_png = FALSE) {
 
+            Sys.getenv("CONDA_PREFIX")
+        Sys.setenv(CONDA_PREFIX="/data/conda/microscope/")
+        proj_db_path <- file.path(Sys.getenv("CONDA_PREFIX"), "share", "proj")
+        Sys.setenv(PROJ_LIB=proj_db_path)
+        Sys.getenv("CONDA_PREFIX")
+
+
+    
   # Read input data
   env_table <- data.table::fread(environment_data)
   otu_table <- data.table::fread(OTU_table_in)
@@ -672,37 +680,54 @@ maps_parallelise <- function(
 
 
     
-    run_save_otu_map <- function(OTU_name) {
+#    run_save_otu_map <- function(OTU_name) {
         
-        Sys.getenv("CONDA_PREFIX")
-        Sys.setenv(CONDA_PREFIX="/data/conda/microscope/")
-        proj_db_path <- file.path(Sys.getenv("CONDA_PREFIX"), "share", "proj")
-        Sys.setenv(PROJ_LIB=proj_db_path)
-        Sys.getenv("CONDA_PREFIX")
+#        Sys.getenv("CONDA_PREFIX")
+#        Sys.setenv(CONDA_PREFIX="/data/conda/microscope/")
+#        proj_db_path <- file.path(Sys.getenv("CONDA_PREFIX"), "share", "proj")
+#        Sys.setenv(PROJ_LIB=proj_db_path)
+#        Sys.getenv("CONDA_PREFIX")
         
-        microscope::save_otu_map(
-                        OTU_name = OTU_name,
-                        OTU_table_in = OTU_table_in,
-                        environment_data = environment_data,
-                        Grid_file = Grid_file,
-                        UK_poly_file = UK_poly_file,
-                        UK_line_file = UK_line_file,
-                        maps_db = maps_db,
-                        Make_png = FALSE
-                    )
-    }
+ #       microscope::save_otu_map(
+ #                       OTU_name = OTU_name,
+ #                       OTU_table_in = OTU_table_in,
+ #                       environment_data = environment_data,
+ #                       Grid_file = Grid_file,
+ #                       UK_poly_file = UK_poly_file,
+ #                       UK_line_file = UK_line_file,
+ #                       maps_db = maps_db,
+ #                       Make_png = FALSE
+ #                   )
+#    }
     
                                         # Create a cluster with 5 nodes
     cl <- parallel::makeCluster(8)
     
                                         # Export the required function to the workers
-    parallel::clusterExport(cl, varlist = c("run_save_otu_map"))
+#    parallel::clusterExport(cl, varlist = c("microscope::run_save_otu_map"))
     
     filtered_OTU = data.table::fread(OTU_table_in)
     OTU_names = colnames(filtered_OTU)
     OTU_name = OTU_names[-1]
     
-    results <- parallel::parSapply(cl, OTU_name, run_save_otu_map)
+  #  results <- parallel::parSapply(cl, OTU_name, run_save_otu_map)
+
+
+result <- parallel::parSapply(cl, OTU_name, function(OTU) {
+    microscope::save_otu_map(
+        OTU_name = OTU,
+        OTU_table_in = OTU_table_in,
+        environment_data = environment_data,
+        Grid_file = Grid_file,
+        UK_poly_file = UK_poly_file,
+        UK_line_file = UK_line_file,
+        maps_db = maps_db,
+        Make_png = FALSE
+    )
+})
+
+
+    
     parallel::stopCluster(cl)
     
 }
