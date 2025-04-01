@@ -608,8 +608,9 @@ save_otu_map <- function(OTU_name,
   serialized_sf <- list(serialize(newmap, NULL))
     
   # Connect to maps database
-  maps_db_conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db, synchronous = "normal")
-  DBI::dbExecute(maps_db_conn, "PRAGMA busy_timeout = 5000;")
+    maps_db_conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db, synchronous = "normal")
+    DBI::dbExecute(maps_db_conn, "PRAGMA journal_mode=WAL;")
+    DBI::dbExecute(maps_db_conn, "PRAGMA busy_timeout = 5000;")
 
   # Insert map data into database
   sql_command_maps <- "insert or replace into maps_table (otu_name, map_object, break_points) values (?, ?, ?)"
@@ -667,6 +668,9 @@ maps_parallelise <- function(
                              UK_line_file = 'data/02_processed_data/ukcoast_line.shp',
                              Make_png = FALSE
                              ){
+
+
+    
     run_save_otu_map <- function(OTU_name) {
         
         Sys.getenv("CONDA_PREFIX")
