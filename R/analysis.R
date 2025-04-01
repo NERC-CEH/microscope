@@ -687,13 +687,12 @@ maps_parallelise <- function(
     }
     
                                         # Create a cluster with 5 nodes
-    cl <- parallel::makeCluster(40)
+    cl <- parallel::makeCluster(8)
     
                                         # Export the required function to the workers
     parallel::clusterExport(cl, varlist = c("run_save_otu_map"))
     
-    filtered_OTU_file='data/02_processed_data/filtered_otu_table.csv'
-    filtered_OTU = data.table::fread(filtered_OTU_file)
+    filtered_OTU = data.table::fread(OTU_table_in)
     OTU_names = colnames(filtered_OTU)
     OTU_name = OTU_names[-1]
     
