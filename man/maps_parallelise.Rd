@@ -30,6 +30,8 @@ Default is 'data/02_processed_data/ukcoast_poly.shp'.}
 \item{UK_line_file}{Character string. Path to the UK coastline shapefile.
 Default is 'data/02_processed_data/ukcoast_line.shp'.}
 
+\item{maps_db}{Db location}
+
 \item{Make_png}{Logical. Whether to generate PNG visualizations. Default is FALSE.}
 }
 \value{

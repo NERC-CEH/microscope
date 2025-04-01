@@ -644,7 +644,7 @@ save_otu_map <- function(OTU_name,
 #' @param UK_line_file Character string. Path to the UK coastline shapefile.
 #'   Default is 'data/02_processed_data/ukcoast_line.shp'.
 #' @param Make_png Logical. Whether to generate PNG visualizations. Default is FALSE.
-#'
+#' @param maps_db Db location
 #' @return None. The function creates map objects for all OTUs and stores them in the maps database.
 #'
 #' @examples
