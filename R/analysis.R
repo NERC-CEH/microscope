@@ -686,7 +686,7 @@ maps_parallelise <- function(
     ## parallel::clusterExport(cl, varlist = c("microscope::run_save_otu_map"))
 
     ## Pass database path instead of opening multiple connections
-    parallel::clusterExport(cl, c("OTU_table_in", "environment_data", "Grid_file", "UK_poly_file", "UK_line_file", "maps_db", "Make_png"))
+    parallel::clusterExport(cl, c("OTU_table_in", "environment_data", "Grid_file", "UK_poly_file", "UK_line_file", "maps_db", "Make_png"), envir = environment())
     
 
     ## Each worker will create ONE persistent connection
@@ -702,28 +702,22 @@ maps_parallelise <- function(
     filtered_OTU = data.table::fread(OTU_table_in)
     OTU_names = colnames(filtered_OTU)
     OTU_name = OTU_names[-1]
+
+    result <- parallel::parSapply(cl, OTU_name, function(OTU) {
+        microscope::save_otu_map(
+                        OTU_name = OTU,
+                        OTU_table_in = OTU_table_in,
+                        environment_data = environment_data,
+                        Grid_file = Grid_file,
+                        UK_poly_file = UK_poly_file,
+                        UK_line_file = UK_line_file,
+                        maps_db_conn = maps_db_conn,
+                        Make_png = FALSE
+                    )
+    })
     
-  #  results <- parallel::parSapply(cl, OTU_name, run_save_otu_map)
-
-
-result <- parallel::parSapply(cl, OTU_name, function(OTU) {
-    microscope::save_otu_map(
-        OTU_name = OTU,
-        OTU_table_in = OTU_table_in,
-        environment_data = environment_data,
-        Grid_file = Grid_file,
-        UK_poly_file = UK_poly_file,
-        UK_line_file = UK_line_file,
-        maps_db_conn = maps_db_conn,
-        Make_png = FALSE
-    )
-})
-
     parallel::clusterEvalQ(cl, DBI::dbDisconnect(maps_db_conn))
-
-    
     parallel::stopCluster(cl)
-    
 }
 
 
