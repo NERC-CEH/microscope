@@ -545,7 +545,7 @@ save_otu_map <- function(OTU_name,
                          Grid_file,
                          UK_poly_file,
                          UK_line_file,
-                         maps_db = "maps_db.sqlite",
+                         maps_db_conn,
                          Make_png = FALSE) {
 
             Sys.getenv("CONDA_PREFIX")
@@ -616,14 +616,14 @@ save_otu_map <- function(OTU_name,
   serialized_sf <- list(serialize(newmap, NULL))
     
   # Connect to maps database
-    maps_db_conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db, synchronous = "normal")
-    DBI::dbExecute(maps_db_conn, "PRAGMA journal_mode=WAL;")
-    DBI::dbExecute(maps_db_conn, "PRAGMA busy_timeout = 5000;")
+##    maps_db_conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db, synchronous = "normal")
+##    DBI::dbExecute(maps_db_conn, "PRAGMA journal_mode=WAL;")
+##    DBI::dbExecute(maps_db_conn, "PRAGMA busy_timeout = 5000;")
 
   # Insert map data into database
   sql_command_maps <- "insert or replace into maps_table (otu_name, map_object, break_points) values (?, ?, ?)"
   DBI::dbExecute(maps_db_conn, sql_command_maps, params = list(OTU_name, serialized_sf, break_points_json))
-  DBI::dbDisconnect(maps_db_conn)
+#  DBI::dbDisconnect(maps_db_conn)
 
   # Generate PNG visualization if requested
   if (Make_png) {
@@ -678,34 +678,27 @@ maps_parallelise <- function(
                              Make_png = FALSE
                              ){
 
+    ## Create a cluster with 8 nodes
+    num_workers <- min(8, detectCores() - 1)  # Use up to 8, but avoid using all cores
+    cl <- parallel::makeCluster(num_workers)
+    
+    ## Export the required function to the workers
+    ## parallel::clusterExport(cl, varlist = c("microscope::run_save_otu_map"))
 
+    ## Pass database path instead of opening multiple connections
+    parallel::clusterExport(cl, c("OTU_table_in", "environment_data", "Grid_file", "UK_poly_file", "UK_line_file", "maps_db", "Make_png"))
     
-#    run_save_otu_map <- function(OTU_name) {
-        
-#        Sys.getenv("CONDA_PREFIX")
-#        Sys.setenv(CONDA_PREFIX="/data/conda/microscope/")
-#        proj_db_path <- file.path(Sys.getenv("CONDA_PREFIX"), "share", "proj")
-#        Sys.setenv(PROJ_LIB=proj_db_path)
-#        Sys.getenv("CONDA_PREFIX")
-        
- #       microscope::save_otu_map(
- #                       OTU_name = OTU_name,
- #                       OTU_table_in = OTU_table_in,
- #                       environment_data = environment_data,
- #                       Grid_file = Grid_file,
- #                       UK_poly_file = UK_poly_file,
- #                       UK_line_file = UK_line_file,
- #                       maps_db = maps_db,
- #                       Make_png = FALSE
- #                   )
-#    }
-    
-                                        # Create a cluster with 5 nodes
-    cl <- parallel::makeCluster(8)
-    
-                                        # Export the required function to the workers
-#    parallel::clusterExport(cl, varlist = c("microscope::run_save_otu_map"))
-    
+
+    ## Each worker will create ONE persistent connection
+    parallel::clusterEvalQ(cl, {
+        library(DBI)
+        library(RSQLite)
+        maps_db_conn <<- DBI::dbConnect(SQLite(), maps_db)
+        DBI::dbExecute(maps_db_conn, "PRAGMA journal_mode=WAL;")
+        DBI::dbExecute(maps_db_conn, "PRAGMA busy_timeout = 5000;")
+    })
+
+   
     filtered_OTU = data.table::fread(OTU_table_in)
     OTU_names = colnames(filtered_OTU)
     OTU_name = OTU_names[-1]
@@ -721,11 +714,12 @@ result <- parallel::parSapply(cl, OTU_name, function(OTU) {
         Grid_file = Grid_file,
         UK_poly_file = UK_poly_file,
         UK_line_file = UK_line_file,
-        maps_db = maps_db,
+        maps_db_conn = maps_db_conn,
         Make_png = FALSE
     )
 })
 
+    parallel::clusterEvalQ(cl, DBI::dbDisconnect(maps_db_conn))
 
     
     parallel::stopCluster(cl)
