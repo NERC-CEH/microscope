@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it using these metadata.
+title: Microscope
+type: software
+abstract: A series of functions for combining spatial and genomics data
+authors:
+  - family-names: Long
+    given-names: Robin
+    orcid: "https://orcid.org/0000-0003-2249-645X"
+		affiliation: "UK Centre for Ecology & Hydrology"
+repository-code: "https://github.com/citation-file-format/my-research-software"
+version: 0.11.2
+date-released: "2025-04-02"
+contact:
+  - family-names: Long
+    given-names: Robin
+    orcid: "https://orcid.org/0000-0003-2249-645X"
+		affiliation: "UK Centre for Ecology & Hydrology"
+license: MIT License
+
