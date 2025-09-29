@@ -136,10 +136,10 @@ ui <- fluidPage(
         "db_choice", 
         "Choose SQLite Database:",
         choices = list(
-          "16s" = "data/16s",
+          "16s" = "data/16s/",
           "18s" = "data/18s/"
         ),
-        selected = "data/16s"
+        selected = "data/16s/"
       ),
       
       actionButton("connect_btn", "Connect to Database", style = "color: #fff; background-color:#2f7ece"),
@@ -367,7 +367,7 @@ server <- function(input, output, session) {
           FROM otu_table
           WHERE otu_table.hit IN('", paste(blast_capture_df$`subject id`, collapse = "', '"), "');")
         
-        #OTU_abund <- DBI::dbGetQuery(db_conn_otu(), SQL_command)
+        #OTU_abund <- DBI::dbGetQuery(db_conn_otu(), SQL_command)#
         OTU_abund <- DBI::dbGetQuery(db_conn_microscope(), SQL_command)
         
         # Remove duplicate columns and format data
