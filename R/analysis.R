@@ -46,13 +46,13 @@
 #' @export
 merge_AVC_location_data <- function(AVC_data, location_data, combined_avc_location) {
     cs_avc <- data.table::fread(AVC_data)
-    cs_location <- data.table::fread(CS_location_data)
+    cs_location <- data.table::fread(location_data)
 
     # "V1" means there were row names, we need to change this to a proper column name
     data.table::setnames(cs_avc, old = "V1", new = "ID", skip_absent = TRUE)
     
     cs_avc_with_location <- merge(cs_avc, cs_location, by = 'ID')
-    data.table::fwrite(cs_avc_with_location, CS_AVC_combined)
+    data.table::fwrite(cs_avc_with_location, combined_avc_location)
 }
 
 
