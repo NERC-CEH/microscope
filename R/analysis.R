@@ -546,10 +546,11 @@ save_otu_map <- function(OTU_name,
                          UK_poly_file,
                          UK_line_file,
                          maps_db_conn,
+                         conda_env_path = "/data/conda/microscope/",
                          Make_png = FALSE) {
 
             Sys.getenv("CONDA_PREFIX")
-        Sys.setenv(CONDA_PREFIX="/data/conda/microscope/")
+        Sys.setenv(CONDA_PREFIX=conda_env_path")
         proj_db_path <- file.path(Sys.getenv("CONDA_PREFIX"), "share", "proj")
         Sys.setenv(PROJ_LIB=proj_db_path)
         Sys.getenv("CONDA_PREFIX")
@@ -674,7 +675,8 @@ maps_parallelise <- function(
                              Grid_file = 'data/02_processed_data/ukcoast_grid.shp',
                              UK_poly_file = 'data/02_processed_data/ukcoast_poly.shp',
                              UK_line_file = 'data/02_processed_data/ukcoast_line.shp',
-                             maps_db = "data/18S_data/maps_db.sqlite",
+                             maps_db_path = "data/18S_data/maps_db.sqlite",
+		                         conda_env_path = "/data/conda/microscope/",
                              Make_png = FALSE
                              ){
 
@@ -693,7 +695,7 @@ maps_parallelise <- function(
     parallel::clusterEvalQ(cl, {
         library(DBI)
         library(RSQLite)
-        maps_db_conn <<- DBI::dbConnect(SQLite(), maps_db)
+        maps_db_conn <<- DBI::dbConnect(SQLite(), maps_db_path)
         DBI::dbExecute(maps_db_conn, "PRAGMA journal_mode=WAL;")
         DBI::dbExecute(maps_db_conn, "PRAGMA busy_timeout = 5000;")
     })
@@ -712,6 +714,7 @@ maps_parallelise <- function(
                         UK_poly_file = UK_poly_file,
                         UK_line_file = UK_line_file,
                         maps_db_conn = maps_db_conn,
+                        conda_env_path = conda_env_path,
                         Make_png = FALSE
                     )
     })
