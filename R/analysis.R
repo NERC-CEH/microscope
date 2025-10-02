@@ -550,7 +550,7 @@ save_otu_map <- function(OTU_name,
                          Make_png = FALSE) {
 
             Sys.getenv("CONDA_PREFIX")
-        Sys.setenv(CONDA_PREFIX=conda_env_path")
+        Sys.setenv(CONDA_PREFIX=conda_env_path)
         proj_db_path <- file.path(Sys.getenv("CONDA_PREFIX"), "share", "proj")
         Sys.setenv(PROJ_LIB=proj_db_path)
         Sys.getenv("CONDA_PREFIX")
