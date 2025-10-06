@@ -769,12 +769,12 @@ SeqIO.write(records, r.filtered_fasta_file, "fasta")
 #' Make BLASTdb
 #' @description blastdb
 #' @export
-make_blast_bash <- function(fasta_file, blast_db_out) {
+make_blast_bash <- function(fasta_file, blast_db_out, conda_env_path = "/data/conda/microscope/") {
   # Create the BLAST database directory
   system(paste("mkdir -p", shQuote(dirname(blast_db_out))), ignore.stdout = TRUE, ignore.stderr = TRUE)
 
   # Run makeblastdb
-  Sys.setenv(PATH=paste0(Sys.getenv("PATH"), ":/data/conda/microscope/bin"))
+  Sys.setenv(PATH=paste0(Sys.getenv("PATH"), ":", conda_env_path, "bin"))
   system(paste("makeblastdb -in", shQuote(fasta_file),
                "-dbtype nucl -out", shQuote(blast_db_out)))
 }
