@@ -680,6 +680,13 @@ maps_parallelise <- function(
                              Make_png = FALSE
                              ){
 
+		## Create db first to stop multiple write attempts.
+		if (!file.exists(maps_db_path)) {
+	    conn <- dbConnect(SQLite(), maps_db_path)
+	    dbExecute(conn, "PRAGMA journal_mode=WAL;")   # Enable WAL once, permanently
+	    dbDisconnect(conn)
+		}
+
     ## Create a cluster with 8 nodes
     num_workers <- min(8, detectCores() - 1)  # Use up to 8, but avoid using all cores
     cl <- parallel::makeCluster(num_workers)
@@ -697,7 +704,7 @@ maps_parallelise <- function(
         library(RSQLite)
         maps_db_conn <<- DBI::dbConnect(SQLite(), maps_db_path)
         DBI::dbExecute(maps_db_conn, "PRAGMA journal_mode=WAL;")
-        DBI::dbExecute(maps_db_conn, "PRAGMA busy_timeout = 5000;")
+        DBI::dbExecute(maps_db_conn, "PRAGMA busy_timeout = 30000;")
     })
 
    
