@@ -392,6 +392,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
     
     # Connect to maps database and create table
     maps_db_conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db)
+		DBI::dbExecute(conn = maps_db_conn, "PRAGMA journal_mode=WAL;")
     DBI::dbExecute(conn = maps_db_conn, statement = sql_command_maps)
     DBI::dbDisconnect(maps_db_conn)
    
