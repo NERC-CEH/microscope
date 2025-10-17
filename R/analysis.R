@@ -696,7 +696,7 @@ maps_parallelise <- function(
     ## parallel::clusterExport(cl, varlist = c("microscope::run_save_otu_map"))
 
     ## Pass database path instead of opening multiple connections
-    parallel::clusterExport(cl, c("OTU_table_in", "environment_data", "Grid_file", "UK_poly_file", "UK_line_file", "maps_db_path", "Make_png"), envir = environment())
+    parallel::clusterExport(cl, c("OTU_table_in", "environment_data", "Grid_file", "UK_poly_file", "UK_line_file", "maps_db_path", "conda_env_path", "Make_png"), envir = environment())
     
 
     ## Each worker will create ONE persistent connection
