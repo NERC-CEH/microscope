@@ -688,10 +688,26 @@ maps_parallelise <- function(
 	    dbDisconnect(conn)
 		}
 
+		# New Check on existing entries
+    # Open a temporary connection to see what is already in the DB
+    check_conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db_path)
+    
+    existing_otus <- c()
+    # Replace 'otu_results' with the actual table name used inside microscope::save_otu_map
+    if (DBI::dbExistsTable(check_conn, "otu_results")) {
+        existing_otus <- DBI::dbGetQuery(check_conn, "SELECT DISTINCT otu_name FROM otu_results")$otu_name
+    }
+    DBI::dbDisconnect(check_conn)
+# ENd new check
+    
+
     ## Create a cluster with 8 nodes
     num_workers <- min(8, detectCores() - 1)  # Use up to 8, but avoid using all cores
     cl <- parallel::makeCluster(num_workers)
-    
+
+
+
+
     ## Export the required function to the workers
     ## parallel::clusterExport(cl, varlist = c("microscope::run_save_otu_map"))
 
@@ -709,11 +725,28 @@ maps_parallelise <- function(
     })
 
    
-    filtered_OTU = data.table::fread(OTU_table_in)
-    OTU_names = colnames(filtered_OTU)
-    OTU_name = OTU_names[-1]
+###    filtered_OTU = data.table::fread(OTU_table_in)
+###    OTU_names = colnames(filtered_OTU)
+###    OTU_name = OTU_names[-1]
 
-    result <- parallel::parSapply(cl, OTU_name, function(OTU) {
+
+ ## 2. Filter the OTU list
+    filtered_OTU = data.table::fread(OTU_table_in)
+    OTU_names = colnames(filtered_OTU)[-1] # Remove the ID/Sample column
+    
+    # Only keep OTUs that are NOT in the existing_otus vector
+    OTU_name_to_process <- setdiff(OTU_names, existing_otus)
+    
+    message(sprintf("Found %d total OTUs. %d already processed. Processing %d remaining...", 
+                    length(OTU_names), length(existing_otus), length(OTU_name_to_process)))
+
+    if (length(OTU_name_to_process) == 0) {
+        message("All OTUs already processed. Skipping.")
+        return(NULL)
+    }
+
+
+    result <- parallel::parSapply(cl, OTU_name_to_process, function(OTU) {
         microscope::save_otu_map(
                         OTU_name = OTU,
                         OTU_table_in = OTU_table_in,
