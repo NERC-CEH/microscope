@@ -694,8 +694,8 @@ maps_parallelise <- function(
     
     existing_otus <- c()
     # Replace 'otu_results' with the actual table name used inside microscope::save_otu_map
-    if (DBI::dbExistsTable(check_conn, "otu_results")) {
-        existing_otus <- DBI::dbGetQuery(check_conn, "SELECT DISTINCT otu_name FROM otu_results")$otu_name
+    if (DBI::dbExistsTable(check_conn, "maps_table")) {
+        existing_otus <- DBI::dbGetQuery(check_conn, "SELECT DISTINCT otu_name FROM maps_table")$otu_name
     }
     DBI::dbDisconnect(check_conn)
 # ENd new check
