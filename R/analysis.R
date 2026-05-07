@@ -348,7 +348,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
         "CREATE TABLE IF NOT EXISTS taxonomy_table (hit character varying (30), %s character varying (250), primary key (hit))",
         paste(
             '"', colnames(taxonomy_csv)[-1], '"',
-            collapse = ' charater varying(250),',
+            collapse = ' character varying(250),',
             sep = ''
         )
     )
@@ -370,7 +370,7 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
         "CREATE TABLE IF NOT EXISTS otu_table (hit character varying (30), %s character varying (30), primary key (hit))",
         paste(
             '"', colnames(otu_csv)[-1], '"',
-            collapse = ' charater varying(250),',
+            collapse = ' character varying(250),',
             sep = ''
         )
     )
@@ -387,8 +387,9 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
 
 
     #turns out that varchar is ignored by SQLlite, it only uses text.  Can be great to indicate to developers that we want short text though.
-    # Create maps table
-    sql_command_maps <- "CREATE TABLE IF NOT EXISTS maps_table (otu_name character varying (30), map_object blob, break_points text, primary key (otu_name))"
+    ## Create maps table
+    sql_command_maps <- "CREATE TABLE IF NOT EXISTS maps_table (otu_name TEXT PRIMARY KEY, pred_values BLOB, break_points TEXT)"
+###    sql_command_maps <- "CREATE TABLE IF NOT EXISTS maps_table (otu_name character varying (30), map_object blob, break_points text, primary key (otu_name))"
     
     # Connect to maps database and create table
     maps_db_conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db)
@@ -422,6 +423,19 @@ format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv
         params = list('map_outline', list(ser_uk.line))
     )
 
+
+    ## Read and Simplify the grid here too!
+    grid_squares <- sf::st_read(ukcoast_grid_shp) # You'll need to add this param to the function
+    grid_simple <- sf::st_simplify(grid_squares, dTolerance = 100)
+    ser_grid <- serialize(grid_simple, connection=NULL)
+    
+    DBI::dbExecute(
+             conn, 
+             "INSERT OR REPLACE INTO plotting_tools_map_tools (description, plot_object) VALUES (?, ?)",
+             params = list('shared_grid_geometry', list(ser_grid))
+         )
+
+    
     ## Close the connection
     DBI::dbDisconnect(conn)
     
@@ -550,87 +564,186 @@ save_otu_map <- function(OTU_name,
                          conda_env_path = "/data/conda/microscope/",
                          Make_png = FALSE) {
 
-            Sys.getenv("CONDA_PREFIX")
-        Sys.setenv(CONDA_PREFIX=conda_env_path)
-        proj_db_path <- file.path(Sys.getenv("CONDA_PREFIX"), "share", "proj")
-        Sys.setenv(PROJ_LIB=proj_db_path)
-        Sys.getenv("CONDA_PREFIX")
+    Sys.getenv("CONDA_PREFIX")
+    Sys.setenv(CONDA_PREFIX=conda_env_path)
+    proj_db_path <- file.path(Sys.getenv("CONDA_PREFIX"), "share", "proj")
+    Sys.setenv(PROJ_LIB=proj_db_path)
+    Sys.getenv("CONDA_PREFIX")
+    
+    
+    
+    ## Read input data
+    env_table <- data.table::fread(environment_data)
+    otu_table <- data.table::fread(OTU_table_in)
 
+###    ## Keep only required columns and match IDs
+###    env_table <- env_table[ID %in% otu_table$ID]
+
+    ## Keep only required columns and match IDs
+    dat <- env_table[otu_table, on = .(ID), nomatch = NULL][, .(E_2_FIG_10KM, N_2_FIG_10KM, OTU = get(OTU_name))]
+    dat <- na.omit(dat)
+    
+###    ## Convert to data frames
+###    OTU_table <- data.frame(otu_table, row.names = 1, check.names = FALSE)
+###    env_data <- data.frame(env_table, row.names = 1, check.names = FALSE)
+    
+###    ## Ensure env data is in the same order as OTU table
+###    Env_sub <- env_data[row.names(OTU_table), ]
+    
+###    ## Extract OTU abundance data
+###    otu_abund <- OTU_table[, OTU_name, drop = FALSE]
+###    dat <- cbind(Env_sub[, c('E_2_FIG_10KM', 'N_2_FIG_10KM')], otu_abund)
+###    colnames(dat)[3] <- "OTU"
+###    dat <- dat[complete.cases(dat), ]
+    
+    ## Read spatial data
+    Grid <- sf::st_read(Grid_file)
+    UK_poly <- sf::st_read(UK_poly_file)
+    UK_line <- sf::st_read(UK_line_file) # Never used by the looks of it.
+
+    ## 2. Convert to sf
+    dat_sf <- sf::st_as_sf(dat, coords = c("E_2_FIG_10KM", "N_2_FIG_10KM"), crs = 27700)
+
+    ## 3. Interpolation
+    ## Use IDW or Kriging
+    spc.idw <- gstat::krige(OTU ~ 1, dat_sf, Grid_obj)
+    spc.idw_sf <- sf::st_as_sf(spc.idw)
+    
+###    ## Perform kriging interpolation
+###    spc.idw <- gstat::krige(OTU ~ 1, dat_sf, Grid)
+###    ukgrid <- 27700
+###    spc.idw_sf <- sf::st_as_sf(spc.idw)
+###    sf::st_crs(spc.idw_sf) <- ukgrid
+
+    ## 4. Clip (The most expensive part)
+    ## Tip: If the Grid_obj is already clipped to the UK, you can skip this!
+    newmap <- sf::st_intersection(spc.idw_sf, UK_poly_obj)
+   
+###    ## Clip interpolation to UK coastline
+###    overlay.idw <- sf::st_intersection(spc.idw_sf, UK_poly)
+###    newmap <- overlay.idw
+
+    ## 5. Calculate Breakpoints
+    otu_abund <- dat$OTU
+    maxv <- max(otu_abund, na.rm = TRUE)
+    at <- c(0, signif(maxv / c(256, 128, 64, 32, 16, 8, 4, 2), 1), maxv)
+    at <- sort(unique(at)) # Ensure they are unique and sorted
 
     
-  # Read input data
-  env_table <- data.table::fread(environment_data)
-  otu_table <- data.table::fread(OTU_table_in)
-  env_table <- env_table[ID %in% otu_table$ID]
+###    ## Define break intervals for visualization
+###    minv <- min(otu_abund)
+###    maxv <- max(otu_abund)
+###    at <- c(
+###        minv, 
+###       signif(maxv / 256, 1), 
+###        signif(maxv / 128, 1), 
+###        signif(maxv / 64, 1), 
+###        signif(maxv / 32, 1), 
+###        signif(maxv / 16, 1), 
+###        signif(maxv / 8, 1), 
+###        signif(maxv / 4, 2), 
+###        signif(maxv / 2, 2), 
+###        maxv
+###    )
 
-  # Convert to data frames
-  OTU_table <- data.frame(otu_table, row.names = 1, check.names = FALSE)
-  env_data <- data.frame(env_table, row.names = 1, check.names = FALSE)
 
-  # Ensure env data is in the same order as OTU table
-  Env_sub <- env_data[row.names(OTU_table), ]
+  pred_values <- newmap$var1.pred
+  serialized_values <- list(serialize(pred_values, NULL))
+  break_points_json <- jsonlite::toJSON(at, digits = NA)
 
-  # Extract OTU abundance data
-  otu_abund <- OTU_table[, OTU_name, drop = FALSE]
-  dat <- cbind(Env_sub[, c('E_2_FIG_10KM', 'N_2_FIG_10KM')], otu_abund)
-  colnames(dat)[3] <- "OTU"
-  dat <- dat[complete.cases(dat), ]
+  sql <- "INSERT OR REPLACE INTO maps_table (otu_name, pred_values, break_points) VALUES (?, ?, ?)"
+  DBI::dbExecute(maps_db_conn, sql, params = list(OTU_name, serialized_values, break_points_json))
 
-  # Read spatial data
-  Grid <- sf::st_read(Grid_file)
-  UK_poly <- sf::st_read(UK_poly_file)
-  UK_line <- sf::st_read(UK_line_file)
-
-  # Convert data to sf object
-  dat_sf <- sf::st_as_sf(dat, coords = c("E_2_FIG_10KM", "N_2_FIG_10KM"), crs = 27700)
-  
-  # Perform kriging interpolation
-  spc.idw <- gstat::krige(OTU ~ 1, dat_sf, Grid)
-  ukgrid <- 27700
-  spc.idw_sf <- sf::st_as_sf(spc.idw)
-  sf::st_crs(spc.idw_sf) <- ukgrid
-  
-  # Clip interpolation to UK coastline
-  overlay.idw <- sf::st_intersection(spc.idw_sf, UK_poly)
-  newmap <- overlay.idw
-
-  # Define break intervals for visualization
-  minv <- min(otu_abund)
-  maxv <- max(otu_abund)
-  at <- c(
-    minv, 
-    signif(maxv / 256, 1), 
-    signif(maxv / 128, 1), 
-    signif(maxv / 64, 1), 
-    signif(maxv / 32, 1), 
-    signif(maxv / 16, 1), 
-    signif(maxv / 8, 1), 
-    signif(maxv / 4, 2), 
-    signif(maxv / 2, 2), 
-    maxv
-  )
-
-  # Store breakpoints as JSON for db
-  sf_json <- jsonlite::toJSON(sf::st_geometry(newmap))
-  break_points_json <- jsonlite::toJSON(at, digits =NA) #NA prevents rounding
-
-  # convert to list when serialising as SQLite sees serialised as many objects  
-  serialized_sf <- list(serialize(newmap, NULL))
     
-  # Connect to maps database
-##    maps_db_conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db, synchronous = "normal")
-##    DBI::dbExecute(maps_db_conn, "PRAGMA journal_mode=WAL;")
-##    DBI::dbExecute(maps_db_conn, "PRAGMA busy_timeout = 5000;")
+###    ## Store breakpoints as JSON for db
+###    sf_json <- jsonlite::toJSON(sf::st_geometry(newmap))
+###    break_points_json <- jsonlite::toJSON(at, digits =NA) #NA prevents rounding
+###    
+###    ## convert to list when serialising as SQLite sees serialised as many objects  
+###    serialized_sf <- list(serialize(newmap, NULL))
+    
+### Connect to maps database
+###    maps_db_conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db, synchronous = "normal")
+###    DBI::dbExecute(maps_db_conn, "PRAGMA journal_mode=WAL;")
+###    DBI::dbExecute(maps_db_conn, "PRAGMA busy_timeout = 5000;")
 
-  # Insert map data into database
-  sql_command_maps <- "insert or replace into maps_table (otu_name, map_object, break_points) values (?, ?, ?)"
-  DBI::dbExecute(maps_db_conn, sql_command_maps, params = list(OTU_name, serialized_sf, break_points_json))
-#  DBI::dbDisconnect(maps_db_conn)
+###    ## Insert map data into database
+###    sql_command_maps <- "insert or replace into maps_table (otu_name, map_object, break_points) values (?, ?, ?)"
+###    DBI::dbExecute(maps_db_conn, sql_command_maps, params = list(OTU_name, serialized_sf, break_points_json))
+###    ##  DBI::dbDisconnect(maps_db_conn)
 
-  # Generate PNG visualization if requested
-  if (Make_png) {
-  }
+    ## Generate PNG visualization if requested
+    if (Make_png) {
+    }
 }
+
+
+
+
+### 3.2 Generate maps per OTU NEWNEWNEWNEWNEWNEWNEWN
+#' Generate map for an individual OTU
+#' 
+#' @description Creates a map object representing the geographical distribution of an individual OTU/ASV.
+#' 
+#' @details The function:
+#'   1. Extracts abundance data for the specified OTU
+#'   2. Performs kriging interpolation to predict values across the UK
+#'   3. Clips the interpolation to the UK coastline
+#'   4. Saves the map object to the maps database
+#'   5. Optionally generates a PNG visualization
+#'
+#' @param OTU_name Character string. Name of the OTU to create a map for.
+#' @param OTU_table_in Character string. Path to the filtered OTU table.
+#' @param environment_data Character string. Path to the environmental data file.
+#' @param Grid_file Character string. Path to the interpolation grid shapefile.
+#' @param UK_poly_file Character string. Path to the UK polygon shapefile.
+#' @param UK_line_file Character string. Path to the UK coastline shapefile.
+#' @param Make_png Logical. Whether to generate a PNG visualization. Default is FALSE.
+#'
+#' @return None. The function saves the map object to the maps database and optionally 
+#'   generates a PNG visualization.
+#'
+#' @examples
+#' save_otu_map(
+#'   OTU_name = "OTU1",
+#'   OTU_table_in = "output/Supplementary/Tables_in_SQL/OTU_abund.csv",
+#'   environment_data = "output/Supplementary/Tables_in_SQL/Env.csv",
+#'   Grid_file = "output/map/uk_grid.shp",
+#'   UK_poly_file = "output/map/uk_poly.shp",
+#'   UK_line_file = "output/map/uk_line.shp",
+#'   Make_png = TRUE
+#' )
+#'
+#' @export
+save_otu_map_optimized <- function(OTU_name, otu_table, env_table, Grid_obj, UK_poly_obj, db_conn) {
+  
+    ## 1. Faster matching (Inner Join)
+    ## Extract the single column we need and join on ID
+    dat <- env_table[otu_table[, .SD, .SDcols = c("ID", OTU_name)], on = .(ID), nomatch = NULL]
+    setnames(dat, OTU_name, "OTU")
+    dat <- na.omit(dat, cols = c("E_2_FIG_10KM", "N_2_FIG_10KM", "OTU"))
+    
+    ## 2. Spatial
+    dat_sf <- sf::st_as_sf(dat, coords = c("E_2_FIG_10KM", "N_2_FIG_10KM"), crs = 27700)
+    spc.idw <- gstat::krige(OTU ~ 1, dat_sf, Grid_obj, debug.level = 0)
+    
+    ## 3. Clip & Prep Values
+    ## Using the ALREADY simplified UK_poly_obj
+    newmap <- sf::st_intersection(sf::st_as_sf(spc.idw), UK_poly_obj)
+    
+    pred_values <- newmap$var1.pred
+    
+    ## 4. Breakpoints
+    maxv <- max(dat$OTU, na.rm = TRUE)
+    at <- unique(sort(c(0, signif(maxv / c(256, 128, 64, 32, 16, 8, 4, 2), 1), maxv)))
+    
+    ## 5. Save to DB (Binary format)
+    sql <- "INSERT OR REPLACE INTO maps_table (otu_name, pred_values, break_points) VALUES (?, ?, ?)"
+    DBI::dbExecute(db_conn, sql, params = list(OTU_name, list(serialize(pred_values, NULL)), jsonlite::toJSON(at)))
+}
+
+
+
 
 ### 3.2 Generate maps per OTU
 #' Generate maps for all OTUs in parallel
@@ -671,58 +784,120 @@ save_otu_map <- function(OTU_name,
 #'
 #' @export
 maps_parallelise <- function(
-                             OTU_table_in = 'data/02_processed_data/filtered_otu_table.csv',
-                             environment_data = 'data/01_pre-processed_data/cs_location_avc.csv',
-                             Grid_file = 'data/02_processed_data/ukcoast_grid.shp',
-                             UK_poly_file = 'data/02_processed_data/ukcoast_poly.shp',
-                             UK_line_file = 'data/02_processed_data/ukcoast_line.shp',
-                             maps_db_path = "data/18S_data/maps_db.sqlite",
-		                         conda_env_path = "/data/conda/microscope/",
-                             Make_png = FALSE
-                             ){
+    OTU_table_path = 'data/02_processed_data/filtered_otu_table.csv',
+    env_data_path = 'data/01_pre-processed_data/cs_location_avc.csv',
+    Grid_file = 'data/02_processed_data/ukcoast_grid.shp',
+    UK_poly_file = 'data/02_processed_data/ukcoast_poly.shp',
+    maps_db_path = "data/18S_data/maps_db.sqlite",
+    Make_png = FALSE
+    ) {
+###    maps_parallelise <- function(
+###                             OTU_table_in = 'data/02_processed_data/filtered_otu_table.csv',
+###                             environment_data = 'data/01_pre-processed_data/cs_location_avc.csv',
+###                             Grid_file = 'data/02_processed_data/ukcoast_grid.shp',
+###                             UK_poly_file = 'data/02_processed_data/ukcoast_poly.shp',
+###                             UK_line_file = 'data/02_processed_data/ukcoast_line.shp',
+###                             maps_db_path = "data/18S_data/maps_db.sqlite",
+###                             conda_env_path = "/data/conda/microscope/",
+###                             Make_png = FALSE
+###                             ){
 
-		## Create db first to stop multiple write attempts.
-		if (!file.exists(maps_db_path)) {
-	    conn <- dbConnect(SQLite(), maps_db_path)
-	    dbExecute(conn, "PRAGMA journal_mode=WAL;")   # Enable WAL once, permanently
-	    dbDisconnect(conn)
-		}
 
-		# New Check on existing entries
-    # Open a temporary connection to see what is already in the DB
-    check_conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db_path)
+
+    ## 1. LOAD DATA ONCE (Hoisting)
+    message("Loading and preparing shared data...")
+    otu_full  <- data.table::fread(OTU_table_path)
+    env_full  <- data.table::fread(env_data_path)
+    grid_obj  <- sf::st_read(Grid_file, quiet = TRUE)
+    uk_poly   <- sf::st_read(UK_poly_file, quiet = TRUE)
+
+    ## Simplify the UK polygon once to speed up every single worker's intersection
+    uk_poly_simple <- sf::st_simplify(uk_poly, dTolerance = 100)
+
+
+    ## 2. DATABASE SETUP
+    if (!file.exists(maps_db_path)) {
+        conn <- dbConnect(RSQLite::SQLite(), maps_db_path)
+        dbExecute(conn, "PRAGMA journal_mode=WAL;")
+        ## Ensure table structure matches the new binary format
+        dbExecute(conn, "CREATE TABLE IF NOT EXISTS maps_table (otu_name TEXT PRIMARY KEY, pred_values BLOB, break_points TEXT)")
+        dbDisconnect(conn)
+    }
     
+###    ## Create db first to stop multiple write attempts.
+###    if (!file.exists(maps_db_path)) {
+###        conn <- dbConnect(SQLite(), maps_db_path)
+###        dbExecute(conn, "PRAGMA journal_mode=WAL;")   # Enable WAL once, permanently
+###        dbDisconnect(conn)
+###    }
+    
+    
+###    ## New Check on existing entries
+###    ## Open a temporary connection to see what is already in the DB
+###    check_conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db_path)
+###    
+###    existing_otus <- c()
+###    # Replace 'otu_results' with the actual table name used inside microscope::save_otu_map
+###    if (DBI::dbExistsTable(check_conn, "maps_table")) {
+###        existing_otus <- DBI::dbGetQuery(check_conn, "SELECT DISTINCT otu_name FROM maps_table")$otu_name
+###    }
+###    DBI::dbDisconnect(check_conn)
+
+    ## Check what is already done
+    check_conn <- DBI::dbConnect(RSQLite::SQLite(), maps_db_path)
     existing_otus <- c()
-    # Replace 'otu_results' with the actual table name used inside microscope::save_otu_map
     if (DBI::dbExistsTable(check_conn, "maps_table")) {
         existing_otus <- DBI::dbGetQuery(check_conn, "SELECT DISTINCT otu_name FROM maps_table")$otu_name
     }
     DBI::dbDisconnect(check_conn)
+   
 # ENd new check
     
+    ## 3. FILTER OTU LIST
+    all_otu_names <- colnames(otu_full)[-1]
+    otu_to_process <- setdiff(all_otu_names, existing_otus)
 
-    ## Create a cluster with 8 nodes
-    num_workers <- min(8, detectCores() - 1)  # Use up to 8, but avoid using all cores
+    if (length(otu_to_process) == 0) {
+        message("All OTUs already processed.")
+        return(NULL)
+    }
+
+    ## 4. CLUSTER SETUP
+    num_workers <- min(8, parallel::detectCores() - 1)
     cl <- parallel::makeCluster(num_workers)
 
 
-
-
-    ## Export the required function to the workers
-    ## parallel::clusterExport(cl, varlist = c("microscope::run_save_otu_map"))
-
-    ## Pass database path instead of opening multiple connections
-    parallel::clusterExport(cl, c("OTU_table_in", "environment_data", "Grid_file", "UK_poly_file", "UK_line_file", "maps_db_path", "conda_env_path", "Make_png"), envir = environment())
-    
-
-    ## Each worker will create ONE persistent connection
+    ## Export the LOADED OBJECTS to workers (not the file paths!)
+    ## This sends the data in memory, which is much faster than workers reading from disk.
+    parallel::clusterExport(cl, varlist = c("otu_full", "env_full", "grid_obj", "uk_poly_simple", "maps_db_path"), envir = environment())
+  
     parallel::clusterEvalQ(cl, {
         library(DBI)
         library(RSQLite)
-        maps_db_conn <<- DBI::dbConnect(SQLite(), maps_db_path)
+        library(sf)
+        library(data.table)
+        ## Each worker opens its own connection once
+        maps_db_conn <<- DBI::dbConnect(RSQLite::SQLite(), maps_db_path)
         DBI::dbExecute(maps_db_conn, "PRAGMA journal_mode=WAL;")
         DBI::dbExecute(maps_db_conn, "PRAGMA busy_timeout = 30000;")
     })
+
+    
+    ## Export the required function to the workers
+    ## parallel::clusterExport(cl, varlist = c("microscope::run_save_otu_map"))
+
+###    ## Pass database path instead of opening multiple connections
+###    parallel::clusterExport(cl, c("OTU_table_in", "environment_data", "Grid_file", "UK_poly_file", "UK_line_file", "maps_db_path", "conda_env_path", "Make_png"), envir = environment())
+    
+
+###    ## Each worker will create ONE persistent connection
+###    parallel::clusterEvalQ(cl, {
+###        library(DBI)
+###        library(RSQLite)
+###        maps_db_conn <<- DBI::dbConnect(SQLite(), maps_db_path)
+###        DBI::dbExecute(maps_db_conn, "PRAGMA journal_mode=WAL;")
+###        DBI::dbExecute(maps_db_conn, "PRAGMA busy_timeout = 30000;")
+###    })
 
    
 ###    filtered_OTU = data.table::fread(OTU_table_in)
@@ -730,38 +905,60 @@ maps_parallelise <- function(
 ###    OTU_name = OTU_names[-1]
 
 
- ## 2. Filter the OTU list
-    filtered_OTU = data.table::fread(OTU_table_in)
-    OTU_names = colnames(filtered_OTU)[-1] # Remove the ID/Sample column
+### ## 2. Filter the OTU list
+###    filtered_OTU = data.table::fread(OTU_table_in)
+###    OTU_names = colnames(filtered_OTU)[-1] # Remove the ID/Sample column
+###    
+###    # Only keep OTUs that are NOT in the existing_otus vector
+###    OTU_name_to_process <- setdiff(OTU_names, existing_otus)
+
+    ## 5. RUN PARALLEL
+    message(sprintf("Processing %d OTUs on %d cores...", length(otu_to_process), num_workers))
     
-    # Only keep OTUs that are NOT in the existing_otus vector
-    OTU_name_to_process <- setdiff(OTU_names, existing_otus)
-    
-    message(sprintf("Found %d total OTUs. %d already processed. Processing %d remaining...", 
-                    length(OTU_names), length(existing_otus), length(OTU_name_to_process)))
-
-    if (length(OTU_name_to_process) == 0) {
-        message("All OTUs already processed. Skipping.")
-        return(NULL)
-    }
-
-
-    result <- parallel::parSapply(cl, OTU_name_to_process, function(OTU) {
-        microscope::save_otu_map(
-                        OTU_name = OTU,
-                        OTU_table_in = OTU_table_in,
-                        environment_data = environment_data,
-                        Grid_file = Grid_file,
-                        UK_poly_file = UK_poly_file,
-                        UK_line_file = UK_line_file,
-                        maps_db_conn = maps_db_conn,
-                        conda_env_path = conda_env_path,
-                        Make_png = FALSE
+    parallel::parLapply(cl, otu_to_process, function(OTU) {
+        ## Call the modified save_otu_map that accepts OBJECTS
+        microscope::save_otu_map_optimized(
+                        OTU_name     = OTU,
+                        otu_table    = otu_full,
+                        env_table    = env_full,
+                        Grid_obj     = grid_obj,
+                        UK_poly_obj  = uk_poly_simple,
+                        db_conn      = maps_db_conn
                     )
     })
-    
+
+    ## 6. CLEANUP
     parallel::clusterEvalQ(cl, DBI::dbDisconnect(maps_db_conn))
     parallel::stopCluster(cl)
+    message("Processing complete.")
+
+
+    
+###    message(sprintf("Found %d total OTUs. %d already processed. Processing %d remaining...", 
+###                    length(OTU_names), length(existing_otus), length(OTU_name_to_process)))
+
+###    if (length(OTU_name_to_process) == 0) {
+###        message("All OTUs already processed. Skipping.")
+###        return(NULL)
+###    }
+
+
+###    result <- parallel::parSapply(cl, OTU_name_to_process, function(OTU) {
+###        microscope::save_otu_map(
+###                        OTU_name = OTU,
+###                        OTU_table_in = OTU_table_in,
+###                        environment_data = environment_data,
+###                        Grid_file = Grid_file,
+###                        UK_poly_file = UK_poly_file,
+###                        UK_line_file = UK_line_file,
+###                        maps_db_conn = maps_db_conn,
+###                        conda_env_path = conda_env_path,
+###                        Make_png = FALSE
+###                    )
+###    })
+    
+###    parallel::clusterEvalQ(cl, DBI::dbDisconnect(maps_db_conn))
+###    parallel::stopCluster(cl)
 }
 
 
