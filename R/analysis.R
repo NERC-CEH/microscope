@@ -304,7 +304,7 @@ prepare_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_ab
 #' )
 #' 
 #' @export
-format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv, ukcoast_line_shp, filtered_environmental_csv,
+format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv, ukcoast_line_shp, ukcoast_grid_shp, filtered_environmental_csv,
                                    molecular_db = "molecular_db.sqlite",
                                    maps_db = "maps_db.sqlite") {
     

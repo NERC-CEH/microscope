@@ -9,6 +9,7 @@ format_otu_for_Rsqlite(
   filtered_taxonomy_csv,
   filtered_otu_csv,
   ukcoast_line_shp,
+  ukcoast_grid_shp,
   filtered_environmental_csv,
   molecular_db = "molecular_db.sqlite",
   maps_db = "maps_db.sqlite"
