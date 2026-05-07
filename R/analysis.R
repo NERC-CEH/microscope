@@ -1,4 +1,4 @@
-y#' Microscope: Generate taxonomic explorer app inputs
+#' Microscope: Generate taxonomic explorer app inputs
 #'
 #' @author "Briony Jones"
 #'

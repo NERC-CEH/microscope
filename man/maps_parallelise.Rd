@@ -5,34 +5,33 @@
 \title{Generate maps for all OTUs in parallel}
 \usage{
 maps_parallelise(
-  OTU_table_in = "data/02_processed_data/filtered_otu_table.csv",
-  environment_data = "data/01_pre-processed_data/cs_location_avc.csv",
+  OTU_table_path = "data/02_processed_data/filtered_otu_table.csv",
+  env_data_path = "data/01_pre-processed_data/cs_location_avc.csv",
   Grid_file = "data/02_processed_data/ukcoast_grid.shp",
   UK_poly_file = "data/02_processed_data/ukcoast_poly.shp",
-  UK_line_file = "data/02_processed_data/ukcoast_line.shp",
-  maps_db = "data/18S_data/maps_db.sqlite",
+  maps_db_path = "data/18S_data/maps_db.sqlite",
   Make_png = FALSE
 )
 }
 \arguments{
-\item{OTU_table_in}{Character string. Path to the filtered OTU table.
-Default is 'data/02_processed_data/filtered_otu_table.csv'.}
-
-\item{environment_data}{Character string. Path to the environmental data file.
-Default is 'data/01_pre-processed_data/cs_location_avc.csv'.}
-
 \item{Grid_file}{Character string. Path to the interpolation grid shapefile.
 Default is 'data/02_processed_data/ukcoast_grid.shp'.}
 
 \item{UK_poly_file}{Character string. Path to the UK polygon shapefile.
 Default is 'data/02_processed_data/ukcoast_poly.shp'.}
 
+\item{Make_png}{Logical. Whether to generate PNG visualizations. Default is FALSE.}
+
+\item{OTU_table_in}{Character string. Path to the filtered OTU table.
+Default is 'data/02_processed_data/filtered_otu_table.csv'.}
+
+\item{environment_data}{Character string. Path to the environmental data file.
+Default is 'data/01_pre-processed_data/cs_location_avc.csv'.}
+
 \item{UK_line_file}{Character string. Path to the UK coastline shapefile.
 Default is 'data/02_processed_data/ukcoast_line.shp'.}
 
 \item{maps_db}{Db location}
-
-\item{Make_png}{Logical. Whether to generate PNG visualizations. Default is FALSE.}
 }
 \value{
 None. The function creates map objects for all OTUs and stores them in the maps database.

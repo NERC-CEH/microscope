@@ -4,7 +4,11 @@
 \alias{make_blast_bash}
 \title{Make BLASTdb}
 \usage{
-make_blast_bash(fasta_file, blast_db_out)
+make_blast_bash(
+  fasta_file,
+  blast_db_out,
+  conda_env_path = "/data/conda/microscope/"
+)
 }
 \description{
 blastdb

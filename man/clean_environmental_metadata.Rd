@@ -2,12 +2,12 @@
 % Please edit documentation in R/analysis.R
 \name{clean_environmental_metadata}
 \alias{clean_environmental_metadata}
-\title{Clean up enviromental metadata}
+\title{Clean up environmental metadata}
 \usage{
-clean_environmental_metadata(enviroment_data, filtered_env_data)
+clean_environmental_metadata(environment_data, filtered_env_data)
 }
 \arguments{
-\item{enviroment_data}{Character string. Path to environmental data file. Should contain
+\item{environment_data}{Character string. Path to environmental data file. Should contain
 columns "avc_code", "avc", "pH", "eastings", "northings". Row names should be sample IDs
 that match the OTU table.}
 
