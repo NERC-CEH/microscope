@@ -1,4 +1,4 @@
-#' Microscope: Generate taxonomic explorer app inputs
+y#' Microscope: Generate taxonomic explorer app inputs
 #'
 #' @author "Briony Jones"
 #'
@@ -60,14 +60,14 @@ merge_AVC_location_data <- function(AVC_data, location_data, combined_avc_locati
 ## Step 1 Prepare tables for database
 
 ## Step 1.1
-#' Clean up enviromental metadata
+#' Clean up environmental metadata
 #'
 #' @description Processes and formats environmental metadata for use in the taxonomic explorer app.
 #' 
 #' @details The function removes unnecessary fields and rearranges the data into a format 
 #'   suitable for SQL. It removes samples with missing AVC codes.
 #'
-#' @param enviroment_data Character string. Path to environmental data file. Should contain 
+#' @param environment_data Character string. Path to environmental data file. Should contain 
 #'   columns "avc_code", "avc", "pH", "eastings", "northings". Row names should be sample IDs
 #'   that match the OTU table.
 #' @param filtered_env_data Character string. Path where the filtered environmental data will be saved.
@@ -87,15 +87,15 @@ merge_AVC_location_data <- function(AVC_data, location_data, combined_avc_locati
 #' @note
 #' Original code provided output variable: Env_for_SQL
 #' @export
-clean_environmental_metadata <- function(enviroment_data, filtered_env_data) {
+clean_environmental_metadata <- function(environment_data, filtered_env_data) {
     # Read the environmental data
-    Env <- data.table::fread(enviroment_data)
+    env_dt <- data.table::fread(environment_data)
 
     # Remove rows with missing AVC codes
-    Env_for_SQL <- Env[-which(is.na(Env$avc_code)), ]
+    env_filtered <- env_dt[!is.na(avc_code)]
     
     # Write filtered data to file
-    data.table::fwrite(Env_for_SQL, filtered_env_data)
+    data.table::fwrite(env_filtered, filtered_env_data)
 }
 
 ## Step 1.2
@@ -238,7 +238,7 @@ get_abundance_stats <- function(filtered_OTU_file, abundance_stats_file) {
 #'
 #' @examples
 #' # Prepare taxonomy table
-#' prepair_taxonomy_table(
+#' prepare_taxonomy_table(
 #'   "data/raw_taxonomy.csv",
 #'   "output/Supplementary/Tables_in_SQL/Taxonomy.csv",
 #'   "output/Supplementary/Tables_in_SQL/OTU_abund.csv"
@@ -249,7 +249,7 @@ get_abundance_stats <- function(filtered_OTU_file, abundance_stats_file) {
 #' Taxonomy_filt (Taxonomy_Sort is now written as extra steps were needed.)
 #' 
 #' @export
-prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_abund_filter_file) {
+prepare_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_abund_filter_file) {
     # Read taxonomy file
     Taxonomy <- data.table::fread(taxonomy_file)
     
