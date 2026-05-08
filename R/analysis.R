@@ -27,14 +27,14 @@
 #'   rather than knitting the entire file at once, especially during testing.
 
 #' Step 0.1
-#' Merge AVC with location from CountrySide survey
+#' Merge environmental data with location from CountrySide survey
 #'
-#' @description Combines AVC (Aggregate Vegetation Class) data with location information from
+#' @description Combines environmental data with location data from
 #'   the Countryside survey.
 #' 
-#' @param AVC_data Character string. Path to input file with AVC and pH data.
-#' @param location_data Character string. Path to input file with Countryside survey location data.
-#' @param combined_avc_location Character string. Path where the combined output file will be saved.
+#' @param environmental_data_path Character string. Path to input file with environmental data.
+#' @param location_data_path Character string. Path to input file with Countryside survey location data.
+#' @param combined_environmental_location_data_path Character string. Path where the combined output file will be saved.
 #' 
 #' @return None. The function writes the combined data to the specified output file.
 #' 
@@ -44,15 +44,15 @@
 #' @note This uses the 10km areas from Countryside survey.
 #' 
 #' @export
-merge_AVC_location_data <- function(AVC_data, location_data, combined_avc_location) {
-    cs_avc <- data.table::fread(AVC_data)
-    cs_location <- data.table::fread(location_data)
+merge_environmental_and_location_data <- function(environmental_data_path, location_data_path, combined_environmental_location_data_path) {
+    cs_avc <- data.table::fread(environmental_data_path)
+    cs_location <- data.table::fread(location_data_path)
 
     # "V1" means there were row names, we need to change this to a proper column name
     data.table::setnames(cs_avc, old = "V1", new = "ID", skip_absent = TRUE)
     
     cs_avc_with_location <- merge(cs_avc, cs_location, by = 'ID')
-    data.table::fwrite(cs_avc_with_location, combined_avc_location)
+    data.table::fwrite(cs_avc_with_location, combined_environmental_location_data_path)
 }
 
 
@@ -87,7 +87,7 @@ merge_AVC_location_data <- function(AVC_data, location_data, combined_avc_locati
 #' @note
 #' Original code provided output variable: Env_for_SQL
 #' @export
-clean_environmental_metadata <- function(enviroment_data, filtered_env_data) {
+clean_environmental_data <- function(environment_data, filtered_env_data) {
     # Read the environmental data
     Env <- data.table::fread(enviroment_data)
 
@@ -130,7 +130,7 @@ clean_environmental_metadata <- function(enviroment_data, filtered_env_data) {
 #' )
 #'
 #' @export
-clean_OTU_table <- function(OTU_file, filtered_OTU_file, OTU_table_occupancy_filter = 30, sample_read_number = 5000) {
+clean_taxonomic_features_table <- function(OTU_file, filtered_OTU_file, OTU_table_occupancy_filter = 30, sample_read_number = 5000) {
     # Read in OTU table
     OTU_tab <- data.frame(data.table::fread(OTU_file), row.names = 1, check.names = FALSE)
     
@@ -153,7 +153,7 @@ clean_OTU_table <- function(OTU_file, filtered_OTU_file, OTU_table_occupancy_fil
 }
 
 ## Step 1.3
-#' Generate abundance statistics for OTUs
+#' Generate abundance statistics for taxonomic features
 #'
 #' @description Calculates summary statistics for each OTU to characterize its abundance and occupancy.
 #' 
@@ -180,6 +180,7 @@ clean_OTU_table <- function(OTU_file, filtered_OTU_file, OTU_table_occupancy_fil
 #' @export
 get_abundance_stats <- function(filtered_OTU_file, abundance_stats_file) {
     # Read the filtered OTU table
+	# REL rename function to remove suffixes taxonomic_features_table?
     OTU_tab_sub_occ_dec <- data.frame(data.table::fread(filtered_OTU_file), row.names = 1, check.names = FALSE)
     
     # Get total abundance for each OTU
@@ -238,7 +239,7 @@ get_abundance_stats <- function(filtered_OTU_file, abundance_stats_file) {
 #'
 #' @examples
 #' # Prepare taxonomy table
-#' prepair_taxonomy_table(
+#' prepare_taxonomy_table(
 #'   "data/raw_taxonomy.csv",
 #'   "output/Supplementary/Tables_in_SQL/Taxonomy.csv",
 #'   "output/Supplementary/Tables_in_SQL/OTU_abund.csv"
@@ -249,13 +250,15 @@ get_abundance_stats <- function(filtered_OTU_file, abundance_stats_file) {
 #' Taxonomy_filt (Taxonomy_Sort is now written as extra steps were needed.)
 #' 
 #' @export
-prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_abund_filter_file) {
+split_taxonomy_table_columns <- function(taxonomy_file, filtered_taxonomy_file, OTU_abund_filter_file) {
     # Read taxonomy file
     Taxonomy <- data.table::fread(taxonomy_file)
     
     # Split taxonomic classifications into separate columns
     Taxonomy <- splitstackshape::cSplit(indt = Taxonomy, splitCols = 2, sep = ";")
-    
+
+#REL change hit to feature or TU feature?
+	
     # Rename taxonomy columns to the correct levels
     num_columns = length((Taxonomy))
     if (num_columns == 9){
@@ -304,7 +307,7 @@ prepair_taxonomy_table <- function(taxonomy_file, filtered_taxonomy_file, OTU_ab
 #' )
 #' 
 #' @export
-format_otu_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv, ukcoast_line_shp, filtered_environmental_csv,
+format_tables_for_Rsqlite <- function(filtered_abundance_csv, filtered_taxonomy_csv, filtered_otu_csv, ukcoast_line_shp, filtered_environmental_csv,
                                    molecular_db = "molecular_db.sqlite",
                                    maps_db = "maps_db.sqlite") {
     
@@ -748,7 +751,7 @@ maps_parallelise <- function(
 
     result <- parallel::parSapply(cl, OTU_name_to_process, function(OTU) {
         microscope::save_otu_map(
-                        OTU_name = OTU,
+                        OTU_name = OTU, #taxonomic_feature
                         OTU_table_in = OTU_table_in,
                         environment_data = environment_data,
                         Grid_file = Grid_file,
