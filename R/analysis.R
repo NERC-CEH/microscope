@@ -729,9 +729,15 @@ save_otu_map_optimized <- function(OTU_name, otu_table, env_table, Grid_obj, UK_
     
     ## 3. Clip & Prep Values
     ## Using the ALREADY simplified UK_poly_obj
-    newmap <- sf::st_intersection(sf::st_as_sf(spc.idw), UK_poly_obj)
-    
-    pred_values <- newmap$var1.pred
+###    newmap <- sf::st_intersection(sf::st_as_sf(spc.idw), UK_poly_obj) 
+###    pred_values <- newmap$var1.pred
+    ## 3. THE CRITICAL FIX: 
+    ## Instead of running st_intersection a second time and scrambling the rows,
+    ## we extract the values directly from the krige output object.
+    ## This ensures the data vector length matches Grid_obj (28,798 rows) exactly.
+    pred_values <- spc.idw$var1.pred
+ 
+
     
     ## 4. Breakpoints
     maxv <- max(dat$OTU, na.rm = TRUE)
